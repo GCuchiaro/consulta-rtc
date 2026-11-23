@@ -14,6 +14,7 @@ services:
     mem_limit: 256m
     environment:
       CALC_URL: http://calculadora:8080/api/calculadora
+      MCP_HOSTS: rtc.giovannicuchiaro.com
     expose:
       - "8000"
     depends_on:

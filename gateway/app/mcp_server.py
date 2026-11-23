@@ -5,15 +5,29 @@ produtos e serviços na Reforma Tributária, com dados da calculadora oficial.
 """
 from __future__ import annotations
 
+import os
 from datetime import date
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 from .calculadora import NaoEncontrado
 from .servico import Consultas
 
 AVISO = ("Fonte: Calculadora de Tributos oficial da Receita Federal (código aberto, sem modificações), "
          "consultada pelo projeto independente Consulta RTC. Não substitui orientação profissional.")
+
+
+def _seguranca_transporte() -> TransportSecuritySettings:
+    """Proteção contra DNS rebinding do SDK: aceita localhost e os domínios de MCP_HOSTS
+    (separados por vírgula, ex.: "rtc.giovannicuchiaro.com")."""
+    hosts = [h.strip() for h in os.getenv("MCP_HOSTS", "").split(",") if h.strip()]
+    locais = ["localhost", "127.0.0.1"]
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[*hosts, *locais, *(f"{h}:*" for h in locais)],
+        allowed_origins=[*(f"https://{h}" for h in hosts), *(f"http://{h}:*" for h in locais)],
+    )
 
 
 def _data(d: str | None) -> date:
@@ -33,6 +47,7 @@ def criar_mcp(consultas_fn) -> FastMCP:
         ),
         stateless_http=True,
         json_response=True,
+        transport_security=_seguranca_transporte(),
     )
     mcp.settings.streamable_http_path = "/"
 
