@@ -89,6 +89,27 @@ class Calculadora:
         dados, headers = await self._post("/observabilidade/regime-geral", operacao)
         return dados, "x-warning-dados-simulados" in headers
 
+    async def calcular_estrito(self, operacao: dict) -> dict:
+        """Cálculo oficial sem observabilidade: recusa a operação inteira se um item tiver erro."""
+        dados, _ = await self._post("/regime-geral", operacao)
+        return dados
+
+    async def gerar_xml(self, resultado: dict, tipo: str) -> str:
+        async with self._sem:
+            try:
+                r = await self.client.post(f"{self.base}/xml/generate", params={"tipo": tipo}, json=resultado)
+            except httpx.HTTPError as e:
+                raise CalculadoraIndisponivel(str(e)) from e
+        if r.status_code >= 500:
+            raise CalculadoraIndisponivel(f"HTTP {r.status_code}")
+        if r.status_code >= 400:
+            try:
+                d = r.json()
+            except ValueError:
+                d = r.text
+            raise EntradaInvalida((d.get("detail") if isinstance(d, dict) else str(d)[:300]) or "XML não gerado", d)
+        return r.text
+
     async def validar_xml(self, xml: str, tipo: str, subtipo: str) -> Any:
         dados, _ = await self._post("/xml/validate", None, conteudo=xml, tipo="application/xml",
                                     params={"tipo": tipo, "subtipo": subtipo})
@@ -146,6 +167,15 @@ class Calculadora:
         return await self._cacheado(
             ("nbs", codigo, data), TTL_LISTAS,
             lambda: self._get("/dados-abertos/nbs", nbs=codigo, data=data.isoformat()))
+
+    async def nfse_situacoes(self, nbs: str, data: date) -> list[dict]:
+        """Classificações aceitas na NFS-e para o NBS (tabela própria da NFS-e)."""
+        async def buscar():
+            try:
+                return await self._get("/nfse/situacoes-classificacoes-tributarias", nbs=nbs, data=data.isoformat())
+            except NaoEncontrado:
+                return []
+        return await self._cacheado(("nfse-sit", nbs, data), TTL_LISTAS, buscar)
 
     async def fundamentacoes(self, data: date) -> list[dict]:
         return await self._cacheado(

@@ -74,6 +74,19 @@ def mock():
         m.get("/dados-abertos/classificacoes-tributarias/ncm-aplicavel").mock(side_effect=_aplicavel)
         m.get("/dados-abertos/classificacoes-tributarias/nbs-aplicavel").mock(side_effect=_aplicavel)
         m.get("/dados-abertos/versao").respond(json={"versaoApp": "1.7.2", "versaoDb": "x"})
+        m.get("/nfse/situacoes-classificacoes-tributarias").respond(json=[
+            {"codigoSituacaoTributaria": "200", "codigoClassificacaoTributaria": "200003"}])
+        # outros serviços oficiais (Simples Nacional e DANFSe)
+        m.get(url="http://localhost:8082/api/versao").respond(json={"versaoApp": "1.0.2"})
+        m.get(url="http://localhost:8082/api/calculadora/simples-nacional/atividades").respond(
+            json=[{"codigo": "01", "descricao": "Revenda de mercadorias"}])
+        m.get(url="http://localhost:8080/api/api-docs").respond(json={
+            "openapi": "3.1.0", "servers": [{"url": "http://localhost:8080/api"}],
+            "paths": {"/calculadora/pedagio": {"post": {}}, "/actuator/x": {"get": {}}}})
+        m.get(url="http://localhost:8085/health/ready").respond(json={"status": "ok"})
+        m.post(url="http://localhost:8085/api/danfse").mock(side_effect=lambda req: (
+            httpx.Response(200, content=b"%PDF-1.7 teste", headers={"content-type": "application/pdf"})
+            if b"<infNFSe" in req.content else httpx.Response(400, json={"sucesso": False, "mensagem": "infNFSe Id is empty"})))
         yield m
 
 
@@ -131,7 +144,9 @@ def test_excecao_oficial_descarta_candidata(cliente):
 
 def test_servico_usa_lista_nbs(cliente):
     corpo = cliente.get("/api/servico/122011200", params={"data": "2027-01-01"}).json()
-    assert [c["cClassTrib"] for c in corpo["classificacoes"]] == ["200028"]
+    # 200028 vem do anexo; 200003 vem da tabela própria da NFS-e
+    assert [c["cClassTrib"] for c in corpo["classificacoes"]] == ["200028", "200003"]
+    assert corpo["classificacoes"][1]["origem"] == "Tabela da NFS-e"
     # vínculo com anexo errado no banco oficial: classificação fica, texto do anexo não
     assert corpo["classificacoes"][0]["anexos"] == []
 
@@ -141,7 +156,31 @@ def test_produto_codigo_invalido(cliente):
 
 
 def test_versao(cliente):
-    assert cliente.get("/api/versao").json()["calculadora"]["versaoApp"] == "1.7.2"
+    v = cliente.get("/api/versao").json()
+    assert v["calculadora"]["versaoApp"] == "1.7.2"
+    assert v["simplesNacional"]["versaoApp"] == "1.0.2" and v["danfse"]["ok"] is True
+
+
+def test_repasse_oficial_so_rotas_permitidas(cliente):
+    r = cliente.get("/api/oficial/sn/calculadora/simples-nacional/atividades", params={"data": "2027-01-01"})
+    assert r.status_code == 200 and r.json()[0]["codigo"] == "01"
+    assert cliente.get("/api/oficial/sn/actuator/health").status_code == 404
+    assert cliente.get("/api/oficial/sn/calculadora/../actuator").status_code == 404
+    assert cliente.get("/api/oficial/xx/versao").status_code == 404
+
+
+def test_openapi_oficial_reescrito(cliente):
+    doc = cliente.get("/api/oficial/rr/openapi.json").json()
+    assert doc["servers"][0]["url"] == "/api/oficial/rr"
+    assert list(doc["paths"]) == ["/calculadora/pedagio"]
+
+
+def test_danfse(cliente):
+    ok = cliente.post("/api/danfse", content=b'<NFSe><infNFSe Id="NFS1"/></NFSe>')
+    assert ok.status_code == 200 and ok.content.startswith(b"%PDF")
+    erro = cliente.post("/api/danfse", content=b"<NFSe/>")
+    assert erro.status_code == 422 and "infNFSe" in erro.json()["erro"]
+    assert cliente.post("/api/danfse", content=b'<!DOCTYPE x><NFSe/>').status_code == 400
 
 
 def test_calculadora_fora_do_ar(cliente, mock):

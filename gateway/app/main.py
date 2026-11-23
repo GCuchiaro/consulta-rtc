@@ -10,22 +10,23 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .calculadora import Calculadora, CalculadoraIndisponivel, EntradaInvalida, NaoEncontrado
 from .mcp_server import criar_mcp
+from .oficial import CORPO_MAX, SERVICOS, CaminhoNaoPermitido, Oficial, ServicoDesconhecido
 from .servico import Consultas
 from .simulador import Simulacao
 from .xml import XmlRecusado, detectar_tipo, explicar_erro_xml, preparar
 
-VERSAO_PROJETO = "0.2.0"
+VERSAO_PROJETO = "1.0.0"
 XML_MAX_BYTES = 2 * 1024 * 1024
 LIMITE_POR_MINUTO = int(os.getenv("LIMITE_POR_MINUTO", "120"))
 WEB_DIR = Path(os.getenv("WEB_DIR", Path(__file__).resolve().parents[2] / "web"))
 
 estado: dict = {}
-mcp = criar_mcp(lambda: estado["consultas"])
+mcp = criar_mcp(lambda: estado["consultas"], lambda: estado["oficial"])
 
 
 @contextlib.asynccontextmanager
@@ -33,9 +34,11 @@ async def lifespan(app: FastAPI):
     calc = Calculadora()
     estado["calc"] = calc
     estado["consultas"] = Consultas(calc)
+    estado["oficial"] = Oficial()
     async with mcp.session_manager.run():
         yield
     await calc.fechar()
+    await estado["oficial"].fechar()
 
 
 app = FastAPI(title="Consulta RTC", version=VERSAO_PROJETO, lifespan=lifespan,
@@ -110,7 +113,13 @@ async def saude():
 
 @app.get("/api/versao")
 async def versao():
-    return {"projeto": VERSAO_PROJETO, "calculadora": await estado["calc"].versao()}
+    of = estado["oficial"]
+    try:
+        calc = await estado["calc"].versao()
+    except CalculadoraIndisponivel:
+        calc = None
+    return {"projeto": VERSAO_PROJETO, "calculadora": calc,
+            "simplesNacional": await of.versao("sn"), "danfse": {"ok": await of.danfse_ok()}}
 
 
 @app.get("/api/busca")
@@ -156,6 +165,14 @@ async def simular(simulacao: Simulacao):
     return await estado["consultas"].simular(simulacao)
 
 
+@app.post("/api/simular/xml")
+async def simular_xml(simulacao: Simulacao, tipo: str = Query("nfe", pattern="^[a-z0-9-]{2,20}$")):
+    """XML dos grupos de tributação (IBS/CBS/IS) da operação, gerado pela calculadora oficial."""
+    xml = await estado["consultas"].gerar_xml(simulacao, tipo)
+    return Response(xml, media_type="application/xml",
+                    headers={"Content-Disposition": f'attachment; filename="tributacao-{tipo}.xml"'})
+
+
 @app.post("/api/validar-xml")
 async def validar_xml(request: Request, tipo: str | None = Query(None, pattern="^[a-z0-9-]{2,20}$"),
                       subtipo: str = Query("nota", pattern="^(nota|grupo)$")):
@@ -187,6 +204,67 @@ async def validar_xml(request: Request, tipo: str | None = Query(None, pattern="
 @app.get("/api/xml/tipos")
 async def tipos_xml():
     return await estado["calc"].tipos_xml()
+
+
+# ---- API oficial (repasse) -----------------------------------------------------
+@app.get("/api/oficial/{servico}/openapi.json")
+async def openapi_oficial(servico: str):
+    try:
+        return await estado["oficial"].openapi(servico)
+    except ServicoDesconhecido:
+        raise HTTPException(404, "Serviço desconhecido. Use rr (regime regular) ou sn (Simples Nacional).")
+    except Exception:
+        raise HTTPException(503, "Serviço oficial indisponível no momento.")
+
+
+@app.api_route("/api/oficial/{servico}/{caminho:path}", methods=["GET", "POST"])
+async def repasse_oficial(servico: str, caminho: str, request: Request):
+    """Repasse às APIs oficiais (rotas /calculadora/... e /versao). Documentação: /api/oficial/<servico>/openapi.json."""
+    corpo = None
+    if request.method == "POST":
+        corpo = await request.body()
+        if len(corpo) > CORPO_MAX:
+            raise HTTPException(413, "Corpo maior que 1 MB.")
+    try:
+        r = await estado["oficial"].repassar(servico, request.method, caminho, list(request.query_params.multi_items()),
+                                            corpo, request.headers.get("content-type"))
+    except ServicoDesconhecido:
+        raise HTTPException(404, "Serviço desconhecido. Use rr (regime regular) ou sn (Simples Nacional).")
+    except CaminhoNaoPermitido:
+        raise HTTPException(404, "Rota oficial não disponível por aqui.")
+    except Exception:
+        raise HTTPException(503, "Serviço oficial indisponível no momento.")
+    tipo = r.headers.get("content-type", "application/json")
+    cabecalhos = {k: v for k, v in r.headers.items() if k.lower().startswith("x-warning") or k.lower().startswith("x-calc")}
+    return Response(r.content, status_code=r.status_code, media_type=tipo, headers=cabecalhos)
+
+
+@app.post("/api/danfse")
+async def danfse(request: Request, situacao: str = Query("0", pattern="^[012]$"), canhoto: bool = True):
+    """Gera o DANFSe (PDF) a partir do XML da NFS-e nacional, no gerador oficial."""
+    corpo = await request.body()
+    if not corpo:
+        raise HTTPException(400, "Envie o XML da NFS-e no corpo da requisição.")
+    if len(corpo) > XML_MAX_BYTES:
+        raise HTTPException(413, "XML maior que 2 MB.")
+    try:
+        preparar(corpo.decode("utf-8-sig"))  # recusa DOCTYPE/ENTITY
+    except UnicodeDecodeError:
+        raise HTTPException(400, "O XML precisa estar em UTF-8.")
+    except XmlRecusado as e:
+        raise HTTPException(400, str(e))
+    try:
+        r = await estado["oficial"].danfse(corpo, situacao, canhoto)
+    except Exception:
+        raise HTTPException(503, "Gerador de DANFSe indisponível no momento.")
+    if r.status_code == 200 and r.headers.get("content-type", "").startswith("application/pdf"):
+        return Response(r.content, media_type="application/pdf",
+                        headers={"Content-Disposition": 'attachment; filename="danfse.pdf"'})
+    try:
+        msg = r.json().get("mensagem") or r.json().get("message")
+    except ValueError:
+        msg = None
+    return JSONResponse({"erro": msg or "Não foi possível gerar o DANFSe a partir deste XML."}, status_code=422)
 
 
 app.mount("/mcp", mcp.streamable_http_app())

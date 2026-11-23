@@ -36,7 +36,7 @@ def _data(d: str | None) -> date:
     return date.fromisoformat(d) if d else date.today()
 
 
-def criar_mcp(consultas_fn) -> FastMCP:
+def criar_mcp(consultas_fn, oficial_fn=None) -> FastMCP:
     """`consultas_fn` devolve a instância de Consultas criada no startup da API."""
     mcp = FastMCP(
         "consulta-rtc",
@@ -117,5 +117,36 @@ def criar_mcp(consultas_fn) -> FastMCP:
             return {"erro": str(e), "detalhes": e.detalhes}
         r.pop("oficial", None)
         return {**r, "aviso": AVISO}
+
+    @mcp.tool()
+    async def listar_atividades_simples(data: str | None = None, tipo_documento: str | None = None) -> dict:
+        """Atividades do Simples Nacional (cAtivSN) vigentes na data, com o anexo de cada uma e os
+        documentos fiscais em que podem ser usadas. tipo_documento: 55 (NF-e), 65 (NFC-e), 91 (NFS-e)..."""
+        params = [("data", data or date.today().isoformat())]
+        if tipo_documento:
+            params.append(("tpDoc", tipo_documento))
+        r = await oficial_fn().repassar("sn", "GET", "calculadora/simples-nacional/atividades", params, None, None)
+        return {"atividades": r.json() if r.status_code == 200 else [], "aviso": AVISO}
+
+    @mcp.tool()
+    async def simular_simples_nacional(operacao: dict) -> dict:
+        """Calcula CBS e IBS de uma operação de empresa do Simples Nacional na calculadora oficial
+        (endpoint "não assistido", todos os documentos). `operacao` segue o formato oficial, ex.:
+        {"data": "2027-03-15", "tpDoc": "55", "CRT": "1",
+         "aliquotasEfetivas": {"fatorR": false, "anexoI": {"pCBSSN": "1.1612", "pIBSSN": "0.0129"}},
+         "itens": [{"numero": 1, "cAtivSN": "01", "cClassTrib": "000001", "baseCalculo": "1000.00",
+                    "valorImpostoSeletivo": "0.00"}]}
+        NFS-e (tpDoc 91): em vez de CRT, informe opSimpNac, regApIBSCBSSN e regApTribSN, e exatamente 1 item
+        com nbs e tribISSQN. As alíquotas efetivas (pCBSSN/pIBSSN por anexo) vêm do PGDAS do contribuinte.
+        Use listar_atividades_simples para escolher cAtivSN."""
+        import json as _json
+        corpo = {"id": "mcp", "versao": "3.0.0", **operacao}
+        r = await oficial_fn().repassar("sn", "POST", "calculadora/observabilidade/simples-nacional/nao-assistido",
+                                        [], _json.dumps(corpo).encode(), "application/json")
+        try:
+            dados = r.json()
+        except ValueError:
+            dados = {"erro": r.text[:500]}
+        return {"status": r.status_code, "resultado": dados, "aviso": AVISO}
 
     return mcp

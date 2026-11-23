@@ -1,91 +1,99 @@
 # Consulta RTC
 
-Consulta pública e gratuita de como produtos (NCM) e serviços (NBS) são tributados na
-**Reforma Tributária do Consumo** (CBS, IBS e Imposto Seletivo, LC 214/2025): benefícios
-do código (reduções, alíquota zero, regimes específicos), o item do anexo da lei, Imposto
-Seletivo e as demais classificações tributárias (cClassTrib) permitidas.
+Site público e gratuito que junta, numa interface só, as três ferramentas de código aberto que a
+Receita Federal publicou para a **Reforma Tributária do Consumo** (CBS, IBS e Imposto Seletivo,
+LC 214/2025):
 
-Os dados e as regras vêm da **[Calculadora de Tributos oficial](https://github.com/ReceitaFederal/calculadora-rtc-regime-regular)**
-da Receita Federal/Serpro (licença MIT), usada **sem modificações**. Este é um projeto
-independente: não é um site do governo e não substitui a orientação de um contador.
+| Ferramenta oficial | Repositório | Usada para |
+| --- | --- | --- |
+| Calculadora de tributos · regime regular (Java) | [calculadora-rtc-regime-regular](https://github.com/ReceitaFederal/calculadora-rtc-regime-regular) | consulta, simulador, XML, bases de cálculo, pedágio, NFS-e, tabelas |
+| Calculadora · Simples Nacional (Java) | [calculadora-rtc-simples-nacional](https://github.com/ReceitaFederal/calculadora-rtc-simples-nacional) | simulador do Simples, atividades |
+| Gerador de DANFSe (Go) | [calculadora-rtc-gerador-danfse](https://github.com/ReceitaFederal/calculadora-rtc-gerador-danfse) | PDF da NFS-e |
 
-## O que tem
+As três rodam **sem nenhuma modificação** e são **atualizadas automaticamente** a cada commit novo
+nos repositórios oficiais. Projeto independente: não é um site do governo e não substitui a
+orientação de um contador. No ar em <https://rtc.giovannicuchiaro.com>.
 
-- **Site** (`web/`), com três telas:
-  - **Consulta:** busca por nome ou código (com a hierarquia da NCM/NBS) e ficha do código.
-  - **Simulador:** monta uma operação (data, UF, município, itens) e calcula CBS, IBS e IS na
-    calculadora oficial, item a item, com a memória de cálculo e o JSON enviado/recebido. Em 2026 usa
-    as alíquotas de teste oficiais; a partir de 2027 a calculadora exige alíquotas nominais informadas
-    (o resultado sai como simulado).
-  - **Validar XML:** valida NF-e, NFC-e, NFS-e, CT-e etc. contra os XSD oficiais (documento completo ou
-    só o grupo de tributação), com o erro traduzido e a linha destacada. O XML não é guardado.
-- **API** (`/api/...`, documentação em `/api/docs`): `busca`, `produto/{ncm}`, `servico/{nbs}`,
-  `classificacao/{cClassTrib}`, `simular` (POST), `validar-xml` (POST), `ufs`, `municipios`, `versao`.
-- **Servidor MCP** (`/mcp/`, Streamable HTTP): ferramentas `buscar_ncm_nbs`, `consultar_produto`,
-  `consultar_servico`, `consultar_classificacao` e `simular_operacao`, para usar no Claude ou em outro assistente.
+## O que o site faz
 
-## Como funciona
+- **Consulta** — busca de produtos (NCM) e serviços (NBS) por nome ou código, com a hierarquia
+  oficial. A ficha mostra os benefícios do código (cClassTrib ligadas por anexo da LC 214/2025, com o
+  texto do item), Imposto Seletivo, outras classificações aceitas e, para serviços, as regras da NFS-e
+  (classificações por NBS, indicador de operação e local de incidência).
+- **Simulador · regime regular** — CBS, IBS e IS item a item, memória de cálculo oficial, totais e o
+  XML dos grupos de tributação (NF-e, NFC-e, NFS-e, CT-e, BP-e, NF3-e) gerado pela calculadora.
+- **Simulador · Simples Nacional** — CBS e IBS de notas de empresas do Simples (NF-e, NFC-e, NFS-e e
+  demais), com atividade (cAtivSN), anexo, fator "r", sublimite e alíquotas efetivas do PGDAS.
+- **Documentos** — validação de XML contra os XSD oficiais (erro traduzido, linha destacada) e
+  geração do DANFSe em PDF.
+- **Bases e cálculos** — base unificada (NF-e/NFC-e e NFS-e), base da NFS-e, bases de CBS/IBS e de IS
+  de mercadorias, pedágio e validação de indicador de operação. Formulários montados a partir do
+  OpenAPI oficial: campo novo numa versão oficial aparece sem mudar o site.
+- **Tabelas** — classificações, CST, fundamentação legal, alíquotas de referência, redutores,
+  transferências, regras da NFS-e, atividades do Simples, UFs e municípios, com filtro e CSV. Toda
+  consulta GET oficial que não está na lista curada aparece automaticamente em "Outras consultas".
+- **API e MCP** — tudo por HTTP (`/api/docs`) e a API oficial completa repassada em
+  `/api/oficial/rr/…` e `/api/oficial/sn/…` (OpenAPI em `…/openapi.json`). Servidor MCP em `/mcp/`
+  com `buscar_ncm_nbs`, `consultar_produto`, `consultar_servico`, `consultar_classificacao`,
+  `simular_operacao`, `listar_atividades_simples` e `simular_simples_nacional`.
+
+## Arquitetura
 
 ```
-navegador / cliente MCP ─► gateway (FastAPI) ─► calculadora oficial (Java, rede interna)
-                              │ cache, limite por IP, busca textual
-                              └─ cópia somente leitura do banco SQLite oficial
+navegador / cliente MCP ─► gateway (FastAPI + site estático)
+                              ├─► calculadora (regime regular, Java)   ┐
+                              ├─► calculadora-sn (Simples, Java)       ├ rede interna, sem acesso externo
+                              └─► danfse (gerador de DANFSe, Go)       ┘
 ```
 
-- `calculadora/Dockerfile` baixa o código oficial na versão fixada (tag + hash do commit),
-  gera o banco com as migrações oficiais (Flyway) e empacota o JAR. Nada é alterado.
-- O gateway **não implementa regra tributária**. Ele:
-  - consulta os endpoints de dados abertos da calculadora e guarda em cache o que muda pouco;
-  - lê do banco oficial só a hierarquia da NCM/NBS (para a busca achar "arroz" em
-    "Polido ou brunido") e as classificações candidatas a cada código (tabelas
-    `NCM_APLICAVEL`/`NBS_APLICAVEL` e o anexo que as liga);
-  - confirma cada candidata no endpoint oficial `ncm-aplicavel`/`nbs-aplicavel`, que aplica
-    exceções e vigência.
-- Classificações ligadas ao código **por um anexo da LC 214** aparecem como benefícios. As
-  ligadas sem anexo (por exemplo, a lista restrita de quem tem Imposto Seletivo) aparecem em
-  "outras permitidas". Classificações sem lista de NCM/NBS (valem para qualquer código, sob
-  outras condições) não aparecem: o endpoint oficial as considera válidas para tudo.
+- `calculadora/`, `calculadora-sn/` e `danfse/` têm um Dockerfile cada, que baixa o código oficial no
+  **commit fixado** (`ARG COMMIT`; `ARG VERSAO` é só o rótulo do `git describe`) e confere o hash.
+  A calculadora do Simples usa o banco SQLite gerado pelas migrações da calculadora do regime regular,
+  como manda o README oficial.
+- O `gateway/` não implementa regra tributária: repassa às APIs oficiais (só rotas `/calculadora/…` e
+  `/versao`), guarda em cache o que muda pouco, lê do banco oficial apenas a hierarquia NCM/NBS e as
+  classificações candidatas de cada código (confirmadas no endpoint oficial `ncm-aplicavel`/
+  `nbs-aplicavel`) e organiza as respostas. Limite de 120 requisições/minuto por IP. Nada que o usuário
+  envia é guardado.
+- `web/` é o site (HTML/CSS/JS sem build), sobre o design system Giovanni Cuchiaro: Instrument Serif
+  nos títulos, Inter no texto, IBM Plex Mono nos números; verde inglês como único destaque; cantos
+  retos; bordas em vez de sombras; traço duplo na linha de total. Tema escuro padrão, claro opcional.
 
 ### Inconsistência conhecida nos dados oficiais
 
-No banco oficial (versão V0073), cerca de 25% dos vínculos NBS→anexo apontam para um item de
-outro anexo (ex.: serviços de educação → "Anexo IX, item 35: Vinhaça"). O site só mostra o texto
-do anexo quando ele confere com o anexo citado na descrição da classificação.
+No banco oficial (V0073), cerca de 25% dos vínculos NBS→anexo apontam para um item de outro anexo
+(ex.: educação → "Anexo IX, item 35: Vinhaça"). O site só mostra o texto do anexo quando ele confere
+com o anexo citado na descrição da classificação.
+
+## Atualização automática
+
+`.github/workflows/atualizar-oficiais.yml`, a cada 6 horas (e sob demanda):
+
+1. compara o `HEAD` da branch principal de cada repositório oficial com o `COMMIT` dos Dockerfiles;
+2. havendo mudança, troca `COMMIT`/`VERSAO`, monta as quatro imagens e sobe tudo;
+3. roda `scripts/teste-fumaca.sh` com dados reais (consulta, simulação, XML gerado e validado,
+   Simples, base de cálculo, DANFSe, MCP);
+4. passou: commit na `main` e disparo do deploy. Falhou: nada vai ao ar e uma issue registra o
+   resultado e os logs.
 
 ## Rodar localmente
 
-Requisitos: Docker.
-
 ```bash
-docker compose up --build
+docker compose up --build        # http://localhost:8000
+scripts/teste-fumaca.sh http://localhost:8000   # requer curl e jq
 ```
 
-Abra http://localhost:8000. O primeiro build leva alguns minutos (Maven + migrações).
+Testes do gateway (Python 3.12): `cd gateway && pip install -r requirements.txt && pytest -q`.
 
-Testes do gateway (Python 3.12):
+## Deploy
 
-```bash
-cd gateway && python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt && .venv/Scripts/python -m pytest -q
-```
-
-## Atualizar a calculadora oficial
-
-Automático: `.github/workflows/atualizar-calculadora.yml` roda toda segunda-feira (e sob demanda).
-Se saiu tag nova no repositório oficial, ele troca `VERSAO`/`COMMIT` em `calculadora/Dockerfile`,
-monta as imagens, faz um teste de fumaça com dados reais e abre um PR com o resultado e o changelog
-oficial. O merge publica. Requer, em Settings → Actions → General, a opção
-"Allow GitHub Actions to create and approve pull requests".
-
-Manual: troque `VERSAO` e `COMMIT` pela nova tag e o hash do commit dela (`git rev-list -n1 <tag>`).
-O build falha se o hash não conferir.
-
-## Deploy (VPS)
-
-`.github/workflows/deploy.yml`: a cada push na `main`, roda os testes, monta as duas imagens,
-envia por SSH e sobe com `deploy/docker-compose.yml` atrás do proxy Caddy da VPS
-(`deploy/Caddyfile`). Segredos: `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`, `DEPLOY_HOST`.
-Memória: ~520 MB a calculadora, ~70 MB o gateway.
+`.github/workflows/deploy.yml`: a cada push na `main` (ou disparo do robô), roda os testes, monta as
+quatro imagens, envia por SSH à VPS, sobe com `deploy/docker-compose.yml` atrás do proxy Caddy
+(`deploy/Caddyfile`), espera os quatro serviços ficarem saudáveis e roda o teste de fumaça em
+produção. Segredos: `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`, `DEPLOY_HOST`. Memória: ~1 GB e
+~700 MB nas calculadoras, ~20 MB no DANFSe, ~70 MB no gateway.
 
 ## Licença
 
-MIT (veja `LICENSE`). A calculadora oficial é da Receita Federal/Serpro, também MIT.
+MIT (veja `LICENSE`). As ferramentas oficiais são da Receita Federal/Serpro, também MIT; o arquivo
+`scripts/fixtures/nfse-exemplo.xml` vem dos testes do gerador de DANFSe oficial.

@@ -4,111 +4,58 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Consulta RTC</title>
-  <meta name="description" content="Consulte como produtos (NCM) e serviços (NBS) são tributados na Reforma Tributária, simule CBS, IBS e Imposto Seletivo e valide XML de notas, com a calculadora oficial da Receita.">
-  <link rel="stylesheet" href="style.css?v=0.2.0">
+  <meta name="description" content="Tributação de produtos e serviços na Reforma Tributária (CBS, IBS e Imposto Seletivo), simuladores do regime regular e do Simples Nacional, validação de XML, DANFSe e tabelas oficiais, com as ferramentas de código aberto da Receita Federal.">
+  <link rel="icon" href="marca/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <script>try { if (localStorage.getItem("rtc-tema") === "claro") document.documentElement.dataset.tema = "claro"; } catch (e) {}</script>
+  <link rel="stylesheet" href="estilo.css?v=1.0.0">
 </head>
 <body>
   <header class="topo">
     <div class="wrap">
-      <a class="marca" href="#/">Consulta <b>RTC</b></a>
-      <nav class="abas" aria-label="Seções">
-        <a href="#/" data-aba="consulta">Consulta</a>
-        <a href="#/simulador" data-aba="simulador">Simulador</a>
-        <a href="#/xml" data-aba="xml">Validar XML</a>
+      <a class="marca" href="#/" aria-label="Consulta RTC, início">
+        <img id="monograma" src="marca/monograma-escuro.svg" alt="" width="32" height="32">
+        <span class="marca-nome">Consulta <em>RTC</em></span>
+      </a>
+      <nav class="nav" aria-label="Seções">
+        <a href="#/" data-nav="consulta">Consulta</a>
+        <a href="#/simulador" data-nav="simuladores">Simuladores</a>
+        <a href="#/xml" data-nav="documentos">Documentos</a>
+        <a href="#/ferramentas" data-nav="ferramentas">Bases e cálculos</a>
+        <a href="#/tabelas" data-nav="tabelas">Tabelas</a>
+        <a href="#/sobre" data-nav="sobre">Sobre e API</a>
       </nav>
+      <button class="btn btn-fantasma btn-p tema" id="tema" type="button" aria-label="Alternar tema claro e escuro">Tema claro</button>
     </div>
   </header>
 
-  <main class="wrap">
-    <!-- CONSULTA -->
-    <section id="tela-consulta" class="tela">
-      <div class="busca">
-        <h1>Como meu produto ou serviço é tributado na Reforma?</h1>
-        <p class="lead">Digite o nome ou o código <abbr title="Nomenclatura Comum do Mercosul (produtos)">NCM</abbr>/<abbr title="Nomenclatura Brasileira de Serviços">NBS</abbr>. Os dados vêm da calculadora oficial da Receita Federal.</p>
-        <form id="form-busca" autocomplete="off">
-          <input id="q" type="search" placeholder="Ex.: arroz, cerveja, 2203.00.00, consultoria contábil" aria-label="Buscar produto ou serviço" minlength="2" required>
-          <select id="data" aria-label="Data de referência"></select>
-          <button type="submit">Buscar</button>
-        </form>
-        <div class="filtros" role="radiogroup" aria-label="Tipo">
-          <label><input type="radio" name="tipo" value="todos" checked> Tudo</label>
-          <label><input type="radio" name="tipo" value="ncm"> Produtos (NCM)</label>
-          <label><input type="radio" name="tipo" value="nbs"> Serviços (NBS)</label>
-        </div>
-      </div>
-      <section id="resultados" aria-live="polite"></section>
-      <section id="ficha" aria-live="polite"></section>
-    </section>
-
-    <!-- SIMULADOR -->
-    <section id="tela-simulador" class="tela" hidden>
-      <div class="busca">
-        <h1>Simulador de CBS, IBS e Imposto Seletivo</h1>
-        <p class="lead">Monte uma operação do regime regular e veja os tributos calculados pela calculadora oficial, item a item, com a memória de cálculo.</p>
-      </div>
-      <form id="form-sim" class="card" autocomplete="off" novalidate>
-        <div class="grade">
-          <label>Data da operação<input id="sim-data" type="date" required></label>
-          <label>UF<select id="sim-uf" required></select></label>
-          <label class="larga">Município<select id="sim-mun" required><option value="">Escolha a UF</option></select></label>
-        </div>
-        <fieldset id="sim-aliquotas" class="grade" hidden>
-          <legend>Alíquotas nominais (obrigatórias a partir de 2027)</legend>
-          <label>CBS (%)<input id="sim-cbs" type="number" step="0.0001" min="0" value="8.8"></label>
-          <label>IBS estadual (%)<input id="sim-ibsuf" type="number" step="0.0001" min="0" value="0.05"></label>
-          <label>IBS municipal (%)<input id="sim-ibsmun" type="number" step="0.0001" min="0" value="0.05"></label>
-          <p class="muted dica">Valores pré-preenchidos com o exemplo da documentação oficial. As alíquotas definitivas ainda serão fixadas; o resultado sai como <b>simulado</b>.</p>
-        </fieldset>
-        <p class="muted dica" id="sim-2026">Em 2026 a calculadora usa as alíquotas de teste oficiais (CBS 0,9% e IBS 0,1%).</p>
-
-        <h2 class="secao">Itens</h2>
-        <div id="sim-itens"></div>
-        <div class="acoes">
-          <button type="button" class="secundario" id="sim-add">+ Adicionar item</button>
-          <button type="submit">Calcular</button>
-        </div>
-      </form>
-      <section id="sim-resultado" aria-live="polite"></section>
-    </section>
-
-    <!-- VALIDADOR DE XML -->
-    <section id="tela-xml" class="tela" hidden>
-      <div class="busca">
-        <h1>Validar XML da nota</h1>
-        <p class="lead">Confira se o XML da NF-e, NFC-e, NFS-e ou CT-e segue o leiaute oficial com os grupos de IBS, CBS e IS, usando os mesmos XSD da calculadora oficial.</p>
-      </div>
-      <form id="form-xml" class="card" novalidate>
-        <label id="xml-drop" class="drop">
-          <input id="xml-arquivo" type="file" accept=".xml,text/xml,application/xml">
-          <span><b>Arraste o arquivo XML aqui</b> ou clique para escolher</span>
-          <span class="muted" id="xml-nome"></span>
-        </label>
-        <details class="colar"><summary>ou cole o XML</summary>
-          <textarea id="xml-texto" rows="8" spellcheck="false" placeholder="&lt;NFe xmlns=&quot;http://www.portalfiscal.inf.br/nfe&quot;&gt;…"></textarea>
-        </details>
-        <div class="grade">
-          <label>Tipo de documento<select id="xml-tipo"><option value="">Detectar automaticamente</option></select></label>
-          <label>O que validar<select id="xml-subtipo">
-            <option value="nota">Documento completo</option>
-            <option value="grupo">Só o grupo de tributação (gerado pela calculadora)</option>
-          </select></label>
-        </div>
-        <p class="muted dica">O XML é enviado só para validação e não é guardado. A validação confere a estrutura e os formatos (XSD); não confere se os valores calculados estão certos — para isso, use o simulador.</p>
-        <div class="acoes"><button type="submit">Validar</button></div>
-      </form>
-      <section id="xml-resultado" aria-live="polite"></section>
-    </section>
-  </main>
+  <main class="wrap" id="app"></main>
 
   <footer class="rodape">
     <div class="wrap">
-      <p><b>Projeto independente e de código aberto.</b> Não é um site do governo. Os cálculos e tabelas vêm da
-        <a href="https://github.com/ReceitaFederal/calculadora-rtc-regime-regular" target="_blank" rel="noopener">Calculadora de Tributos oficial</a>
-        (Receita Federal/Serpro, licença MIT), usada sem modificações. Não substitui a orientação de um contador.</p>
-      <p id="versao" class="muted"></p>
-      <p class="muted">Use no Claude ou em outro assistente: servidor MCP em <code id="mcp-url"></code> · <a href="/api/docs">API</a> · <a href="https://github.com/GCuchiaro/consulta-rtc" target="_blank" rel="noopener">Código-fonte</a></p>
+      <div>
+        <p>Projeto independente e de código aberto. Não é um site do governo. Cálculos, tabelas, validações e o DANFSe vêm das
+          <a href="https://github.com/ReceitaFederal" target="_blank" rel="noopener">ferramentas oficiais da Receita Federal</a>
+          (licença MIT), usadas sem modificações e atualizadas automaticamente a cada versão nova. Não substitui a orientação de um contador.</p>
+        <p id="versoes" class="mono"></p>
+      </div>
+      <div>
+        <div class="assina">Giovanni <em>Cuchiaro</em></div>
+        <div class="linha-gc"><b>GC</b> ── contabilidade / consultoria / dados</div>
+        <p style="margin-top:var(--space-4)"><a href="https://github.com/GCuchiaro/consulta-rtc" target="_blank" rel="noopener">Código-fonte</a> · <a href="#/sobre">API e MCP</a></p>
+      </div>
     </div>
   </footer>
-  <script src="app.js?v=0.2.0"></script>
+
+  <script src="js/nucleo.js?v=1.0.0"></script>
+  <script src="js/consulta.js?v=1.0.0"></script>
+  <script src="js/simulador.js?v=1.0.0"></script>
+  <script src="js/simples.js?v=1.0.0"></script>
+  <script src="js/documentos.js?v=1.0.0"></script>
+  <script src="js/ferramentas.js?v=1.0.0"></script>
+  <script src="js/sobre.js?v=1.0.0"></script>
+  <script src="js/app.js?v=1.0.0"></script>
 </body>
 </html>

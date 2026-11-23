@@ -1,0 +1,96 @@
+# A cada 6 horas: confere se houve qualquer commit novo na branch principal dos três
+# repositórios oficiais da Receita (regime regular, Simples Nacional, gerador de DANFSe).
+# Se houve: troca o COMMIT/VERSAO nos Dockerfiles, monta tudo, roda o teste de fumaça com
+# dados reais e, se passar, faz o commit na main e dispara o deploy. Se falhar, nada muda
+# no ar e uma issue é aberta com o resultado.
+name: Atualizar ferramentas oficiais
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: atualizar-oficiais
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Procura commits novos nos repositórios oficiais
+        id: v
+        run: |
+          mudou=""
+          : > resumo.md
+          for par in calculadora:calculadora-rtc-regime-regular calculadora-sn:calculadora-rtc-simples-nacional danfse:calculadora-rtc-gerador-danfse; do
+            dir="${par%%:*}"; repo="${par#*:}"
+            url="https://github.com/ReceitaFederal/$repo.git"
+            atual=$(sed -n 's/^ARG COMMIT=//p' "$dir/Dockerfile")
+            novo=$(git ls-remote "$url" HEAD | cut -f1)
+            if [ -z "$novo" ]; then echo "::warning::$repo inacessível"; continue; fi
+            if [ "$novo" = "$atual" ]; then echo "$repo: sem mudança (${atual:0:7})"; continue; fi
+            tmp=$(mktemp -d)
+            git clone -q --filter=blob:none "$url" "$tmp"
+            versao=$(git -C "$tmp" describe --tags --always "$novo")
+            sed -i "s/^ARG COMMIT=.*/ARG COMMIT=$novo/; s/^ARG VERSAO=.*/ARG VERSAO=$versao/" "$dir/Dockerfile"
+            mudou="$mudou $dir"
+            {
+              echo "- **$repo**: \`${atual:0:7}\` → \`${novo:0:7}\` ($versao) · [diferenças](https://github.com/ReceitaFederal/$repo/compare/$atual...$novo)"
+              git -C "$tmp" log --format='  - %s' "$atual..$novo" 2>/dev/null | head -15 || true
+            } >> resumo.md
+          done
+          echo "mudou=${mudou# }" >> "$GITHUB_OUTPUT"
+          cat resumo.md
+
+      - name: Monta e sobe tudo com as versões novas
+        if: steps.v.outputs.mudou != ''
+        run: docker compose up -d --build --wait --wait-timeout 300
+
+      - name: Teste de fumaça com dados reais
+        if: steps.v.outputs.mudou != ''
+        id: fumaca
+        continue-on-error: true
+        run: |
+          for i in $(seq 1 60); do curl -sf localhost:8000/api/saude > /dev/null && break; sleep 3; done
+          sleep 10
+          scripts/teste-fumaca.sh http://localhost:8000 2>&1 | tee fumaca.txt
+
+      - name: Publica (commit na main e deploy)
+        if: steps.v.outputs.mudou != '' && steps.fumaca.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898900+github-actions[bot]@users.noreply.github.com"
+          git add calculadora/Dockerfile calculadora-sn/Dockerfile danfse/Dockerfile
+          { echo "Atualiza ferramentas oficiais: ${{ steps.v.outputs.mudou }}"; echo; cat resumo.md; echo; echo "Teste de fumaça: passou."; } > msg.txt
+          git commit -F msg.txt
+          git push origin HEAD:main
+          # push feito com o token do Actions não dispara outros workflows: chama o deploy direto
+          gh workflow run deploy.yml --ref main
+
+      - name: Registra a falha (nada vai ao ar)
+        if: steps.v.outputs.mudou != '' && steps.fumaca.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          docker compose logs --tail 60 > logs.txt 2>&1 || true
+          {
+            echo "Saiu código novo nos repositórios oficiais, mas o teste de fumaça falhou. O site continua na versão anterior."
+            echo; cat resumo.md; echo
+            echo '### Teste de fumaça'; echo '```'; cat fumaca.txt 2>/dev/null || echo "(não rodou)"; echo '```'
+            echo '### Logs'; echo '```'; tail -c 6000 logs.txt; echo '```'
+          } > corpo.md
+          aberta=$(gh issue list --state open --search "in:title Atualização oficial bloqueada" --json number --jq '.[0].number')
+          if [ -n "$aberta" ]; then gh issue comment "$aberta" --body-file corpo.md
+          else gh issue create --title "Atualização oficial bloqueada: ${{ steps.v.outputs.mudou }}" --body-file corpo.md; fi
+          exit 1

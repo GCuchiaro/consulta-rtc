@@ -60,11 +60,17 @@ jobs:
 
       - name: Envia as imagens e a configuração
         run: |
-          docker save consulta-rtc-calculadora:latest consulta-rtc-gateway:latest consulta-rtc-gateway:${{ github.sha }} | gzip -1 | ssh vps 'gunzip | docker load'
+          docker save consulta-rtc-calculadora:latest consulta-rtc-calculadora-sn:latest consulta-rtc-danfse:latest consulta-rtc-gateway:latest consulta-rtc-gateway:${{ github.sha }} | gzip -1 | ssh vps 'gunzip | docker load'
           ssh vps 'mkdir -p ~/consulta-rtc'
           scp deploy/docker-compose.yml deploy/Caddyfile vps:consulta-rtc/
 
       - name: Reinicia o site
         run: |
           ssh vps 'cd ~/consulta-rtc && docker compose up -d --remove-orphans && docker image prune -f && install -m 644 Caddyfile /opt/proxy/sites/consulta-rtc.caddy && docker exec proxy-caddy-1 caddy reload --config /etc/caddy/Caddyfile'
-          ssh vps 'for i in $(seq 1 45); do if docker compose -f ~/consulta-rtc/docker-compose.yml ps gateway | grep -q healthy; then docker images consulta-rtc-gateway --format "{{.Tag}}" | grep -v "^latest$" | tail -n +3 | xargs -r -I{} docker rmi consulta-rtc-gateway:{} >/dev/null; exit 0; fi; sleep 4; done; docker compose -f ~/consulta-rtc/docker-compose.yml logs --tail 50; exit 1'
+          ssh vps 'for i in $(seq 1 60); do if [ "$(docker compose -f ~/consulta-rtc/docker-compose.yml ps --format "{{.Health}}" | grep -c healthy)" = "4" ]; then docker images consulta-rtc-gateway --format "{{.Tag}}" | grep -v "^latest$" | tail -n +3 | xargs -r -I{} docker rmi consulta-rtc-gateway:{} >/dev/null; exit 0; fi; sleep 4; done; docker compose -f ~/consulta-rtc/docker-compose.yml logs --tail 50; exit 1'
+
+      - name: Confere o site no ar (teste de fumaça em produção)
+        run: |
+          for i in $(seq 1 30); do curl -sf https://rtc.giovannicuchiaro.com/api/saude > /dev/null && break; sleep 3; done
+          sleep 10
+          scripts/teste-fumaca.sh https://rtc.giovannicuchiaro.com

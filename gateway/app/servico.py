@@ -18,7 +18,7 @@ def ligada_por_anexo(c: dict) -> bool:
     Sem anexo, o código está numa lista de classificações permitidas (ex.: produtos com
     Imposto Seletivo só podem usar algumas cClassTrib), o que não é um benefício do produto.
     """
-    return bool(c.get("_anexos"))
+    return bool(c.get("_anexos")) or bool(c.get("_nfse"))
 
 
 def anexos_conferidos(c: dict) -> list[dict]:
@@ -50,6 +50,7 @@ def resumo_classificacao(c: dict) -> dict:
         "creditoPresumidoFornecedor": c.get("indicaCreditoPresumidoFornecedor", False),
         "creditoPresumidoAdquirente": c.get("indicaCreditoPresumidoAdquirente", False),
         "anexos": anexos_conferidos(c),
+        "origem": "Tabela da NFS-e" if c.get("_nfse") else ("Anexo da LC 214/2025" if c.get("_anexos") else None),
         "documentos": sorted({
             (d.get("sigla") or d.get("siglaDfe") or "")
             for d in (c.get("tiposDfeClassificacao") or []) if isinstance(d, dict)
@@ -113,6 +114,15 @@ class Consultas:
             raise NaoEncontrado(codigo)
 
         especificas = [c for c in aplicaveis if c["codigo"] != CLASSIFICACAO_PADRAO]
+        if tipo == "nbs":
+            # Serviços: a NFS-e tem tabela própria de classificações por NBS (ex.: profissões intelectuais).
+            ja = {c["codigo"] for c in especificas}
+            todas = {c["codigo"]: c for c in await self.calc.classificacoes(data)}
+            for sit in await self.calc.nfse_situacoes(codigo, data):
+                cod = sit.get("codigoClassificacaoTributaria")
+                if cod and cod not in ja and cod != CLASSIFICACAO_PADRAO and cod in todas:
+                    especificas.append({**todas[cod], "_anexos": [], "_nfse": True})
+                    ja.add(cod)
         return {
             "tipo": tipo,
             "codigo": codigo,
@@ -133,8 +143,7 @@ class Consultas:
             "regraGeral": CLASSIFICACAO_PADRAO,
         }
 
-    async def simular(self, s: "Simulacao") -> dict:
-        """Monta a operação no formato oficial, calcula na calculadora oficial e simplifica."""
+    async def _operacao(self, s: "Simulacao") -> tuple[dict, list[str]]:
         detalhes = await asyncio.gather(*(
             (self.calc.ncm(it.codigo, s.data) if it.tipo == "ncm" else self.calc.nbs(it.codigo, s.data))
             for it in s.itens
@@ -147,7 +156,17 @@ class Consultas:
             unidades[n] = d.get("unidade")
             if incide_is[n] and s.data >= INICIO_ALIQUOTAS_INFORMADAS and it.aliquotaIS is None:
                 avisos.append(f"Item {n + 1}: incide Imposto Seletivo; informe a alíquota do IS para calcular.")
-        operacao = montar_operacao(s, incide_is, unidades)
+        return montar_operacao(s, incide_is, unidades), avisos
+
+    async def gerar_xml(self, s: "Simulacao", tipo: str) -> str:
+        """XML dos grupos de tributação: cálculo oficial estrito (/regime-geral) + /xml/generate."""
+        operacao, _ = await self._operacao(s)
+        resultado = await self.calc.calcular_estrito(operacao)
+        return await self.calc.gerar_xml(resultado, tipo)
+
+    async def simular(self, s: "Simulacao") -> dict:
+        """Monta a operação no formato oficial, calcula na calculadora oficial e simplifica."""
+        operacao, avisos = await self._operacao(s)
         resposta, simulado = await self.calc.calcular(operacao)
         resultado = simplificar(resposta, s)
         if simulado:

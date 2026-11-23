@@ -1,11 +1,23 @@
 # Produção na VPS (~/consulta-rtc do usuário deploy). Copiado pelo deploy do GitHub Actions.
 # O HTTPS fica no proxy único da VPS (/opt/proxy), que alcança o gateway pela rede "web".
-# A calculadora oficial fica só na rede interna: não é exposta à internet.
+# As ferramentas oficiais ficam só na rede interna: não são expostas à internet.
 services:
   calculadora:
     image: consulta-rtc-calculadora:latest
     restart: unless-stopped
     mem_limit: 1g
+    networks: [interna]
+
+  calculadora-sn:
+    image: consulta-rtc-calculadora-sn:latest
+    restart: unless-stopped
+    mem_limit: 768m
+    networks: [interna]
+
+  danfse:
+    image: consulta-rtc-danfse:latest
+    restart: unless-stopped
+    mem_limit: 128m
     networks: [interna]
 
   gateway:
@@ -14,6 +26,9 @@ services:
     mem_limit: 256m
     environment:
       CALC_URL: http://calculadora:8080/api/calculadora
+      RR_URL: http://calculadora:8080/api
+      SN_URL: http://calculadora-sn:8082/api
+      DANFSE_URL: http://danfse:8080
       MCP_HOSTS: rtc.giovannicuchiaro.com
     expose:
       - "8000"

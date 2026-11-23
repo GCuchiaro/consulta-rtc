@@ -1,10 +1,26 @@
 # Desenvolvimento local: docker compose up --build  →  http://localhost:8000
+# Quatro serviços: as três ferramentas oficiais da Receita (sem modificações) e o gateway.
 services:
-  calculadora:
+  calculadora:            # regime regular (Java)
     build: ./calculadora
-    image: consulta-rtc-calculadora:dev
+    image: consulta-rtc-calculadora:latest
     restart: unless-stopped
     mem_limit: 1g
+
+  calculadora-sn:         # Simples Nacional (Java); usa o banco da calculadora do regime regular
+    build:
+      context: ./calculadora-sn
+      additional_contexts:
+        calc: service:calculadora
+    image: consulta-rtc-calculadora-sn:latest
+    restart: unless-stopped
+    mem_limit: 768m
+
+  danfse:                 # gerador de DANFSe (Go)
+    build: ./danfse
+    image: consulta-rtc-danfse:latest
+    restart: unless-stopped
+    mem_limit: 128m
 
   gateway:
     build:
@@ -12,10 +28,14 @@ services:
       dockerfile: gateway/Dockerfile
       additional_contexts:
         calc: service:calculadora
-    image: consulta-rtc-gateway:dev
+    image: consulta-rtc-gateway:latest
     restart: unless-stopped
     environment:
       CALC_URL: http://calculadora:8080/api/calculadora
+      RR_URL: http://calculadora:8080/api
+      SN_URL: http://calculadora-sn:8082/api
+      DANFSE_URL: http://danfse:8080
+      MCP_HOSTS: localhost
     ports:
       - "8000:8000"
     depends_on:
