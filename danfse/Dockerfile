@@ -2,8 +2,8 @@
 # Mesmos passos do Dockerfile oficial do repositório, com o código baixado na versão fixada
 # e o commit conferido. VERSAO é só o rótulo; vale o COMMIT (o robô troca os dois).
 FROM golang:1.27.1 AS builder
-ARG VERSAO=teste-robo
-ARG COMMIT=a3246ccc3363c3b1b281bea5c2c6b057711dd221
+ARG VERSAO=1.0.0
+ARG COMMIT=8d79e6b2f7fad6375340afcb51c85ed370c64a14
 WORKDIR /app
 RUN git clone --filter=blob:none https://github.com/ReceitaFederal/calculadora-rtc-gerador-danfse.git . \
  && git checkout -q --detach "${COMMIT}" \
