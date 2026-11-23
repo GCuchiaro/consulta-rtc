@@ -1,4 +1,4 @@
-# Produção na VPS (/opt/consulta-rtc). Copiado pelo deploy do GitHub Actions.
+# Produção na VPS (~/consulta-rtc do usuário deploy). Copiado pelo deploy do GitHub Actions.
 # O HTTPS fica no proxy único da VPS (/opt/proxy), que alcança o gateway pela rede "web".
 # A calculadora oficial fica só na rede interna: não é exposta à internet.
 services:
