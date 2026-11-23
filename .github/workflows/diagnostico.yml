@@ -1,0 +1,15 @@
+# Sob demanda: mostra memória, disco e containers da VPS (só leitura).
+name: Diagnóstico da VPS
+on: workflow_dispatch
+jobs:
+  vps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acesso SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host vps\n  HostName %s\n  User deploy\n  IdentityFile ~/.ssh/id_deploy\n' "${{ secrets.DEPLOY_HOST }}" > ~/.ssh/config
+      - name: Recursos
+        run: ssh vps 'nproc; free -m; df -h / | tail -1; docker stats --no-stream --format "{{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}"'
