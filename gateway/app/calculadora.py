@@ -28,6 +28,14 @@ class NaoEncontrado(Exception):
     pass
 
 
+class EntradaInvalida(Exception):
+    """A calculadora oficial recusou a entrada (HTTP 4xx). `detalhes` vem da resposta oficial."""
+
+    def __init__(self, mensagem: str, detalhes: Any = None):
+        super().__init__(mensagem)
+        self.detalhes = detalhes
+
+
 class Calculadora:
     def __init__(self, base_url: str = CALC_URL, client: httpx.AsyncClient | None = None):
         self.base = base_url
@@ -53,6 +61,48 @@ class Calculadora:
         if r.status_code >= 400:
             raise NaoEncontrado(r.text[:300])
         return r.json()
+
+    async def _post(self, caminho: str, corpo: Any, *, conteudo: str | None = None,
+                    tipo: str = "application/json", params: dict | None = None) -> tuple[Any, httpx.Headers]:
+        async with self._sem:
+            try:
+                if conteudo is not None:
+                    r = await self.client.post(f"{self.base}{caminho}", content=conteudo,
+                                               headers={"Content-Type": tipo}, params=params)
+                else:
+                    r = await self.client.post(f"{self.base}{caminho}", json=corpo, params=params)
+            except httpx.HTTPError as e:
+                raise CalculadoraIndisponivel(str(e)) from e
+        if r.status_code >= 500:
+            raise CalculadoraIndisponivel(f"HTTP {r.status_code}")
+        try:
+            dados = r.json()
+        except ValueError:
+            dados = r.text
+        if r.status_code >= 400:
+            msg = dados.get("detail") or dados.get("title") if isinstance(dados, dict) else str(dados)[:300]
+            raise EntradaInvalida(msg or f"HTTP {r.status_code}", dados)
+        return dados, r.headers
+
+    async def calcular(self, operacao: dict) -> tuple[dict, bool]:
+        """Cálculo oficial com observabilidade. Devolve (resposta, simulado?)."""
+        dados, headers = await self._post("/observabilidade/regime-geral", operacao)
+        return dados, "x-warning-dados-simulados" in headers
+
+    async def validar_xml(self, xml: str, tipo: str, subtipo: str) -> Any:
+        dados, _ = await self._post("/xml/validate", None, conteudo=xml, tipo="application/xml",
+                                    params={"tipo": tipo, "subtipo": subtipo})
+        return dados
+
+    async def tipos_xml(self) -> Any:
+        return await self._cacheado(("tipos-xml",), TTL_LISTAS, lambda: self._get("/xml/validate"))
+
+    async def ufs(self) -> list[dict]:
+        return await self._cacheado(("ufs",), TTL_LISTAS, lambda: self._get("/dados-abertos/ufs"))
+
+    async def municipios(self, uf: str) -> list[dict]:
+        return await self._cacheado(("mun", uf), TTL_LISTAS,
+                                    lambda: self._get("/dados-abertos/ufs/municipios", siglaUf=uf))
 
     async def _cacheado(self, chave: tuple, ttl: int, fabrica) -> Any:
         agora = time.monotonic()

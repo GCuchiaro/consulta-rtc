@@ -11,8 +11,10 @@ from datetime import date
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
-from .calculadora import NaoEncontrado
-from .servico import Consultas
+from pydantic import ValidationError
+
+from .calculadora import EntradaInvalida, NaoEncontrado
+from .simulador import Simulacao
 
 AVISO = ("Fonte: Calculadora de Tributos oficial da Receita Federal (código aberto, sem modificações), "
          "consultada pelo projeto independente Consulta RTC. Não substitui orientação profissional.")
@@ -87,5 +89,33 @@ def criar_mcp(consultas_fn) -> FastMCP:
             return {**await consultas_fn().classificacao(cclasstrib, _data(data)), "aviso": AVISO}
         except NaoEncontrado:
             return {"erro": f"cClassTrib {cclasstrib} não encontrada na data informada."}
+
+    @mcp.tool()
+    async def simular_operacao(uf: str, municipio_ibge: int, itens: list[dict], data: str | None = None,
+                               aliquota_cbs: float | None = None, aliquota_ibs_estadual: float | None = None,
+                               aliquota_ibs_municipal: float | None = None) -> dict:
+        """Calcula CBS, IBS e Imposto Seletivo de uma operação do regime regular na calculadora oficial.
+
+        itens: lista de {"tipo": "ncm"|"nbs", "codigo": "...", "valor": 100.0, "cClassTrib": "000001"
+        (opcional), "quantidade": 1 (opcional), "aliquotaIS": 10.0 (só se incide IS, a partir de 2027)}.
+        Em 2026 usa as alíquotas de teste oficiais. A partir de 2027 a calculadora exige as alíquotas
+        nominais (aliquota_cbs, aliquota_ibs_estadual, aliquota_ibs_municipal); o resultado sai como simulado.
+        Use consultar_produto/consultar_servico antes para escolher o cClassTrib certo.
+        """
+        dados: dict = {"data": data or date.today().isoformat(), "uf": uf, "municipio": municipio_ibge,
+                       "itens": itens}
+        if aliquota_cbs is not None:
+            dados["aliquotas"] = {"cbs": aliquota_cbs, "ibsEstadual": aliquota_ibs_estadual or 0,
+                                  "ibsMunicipal": aliquota_ibs_municipal or 0}
+        try:
+            simulacao = Simulacao(**dados)
+        except ValidationError as e:
+            return {"erro": "; ".join(str(x["msg"]).removeprefix("Value error, ") for x in e.errors())}
+        try:
+            r = await consultas_fn().simular(simulacao)
+        except EntradaInvalida as e:
+            return {"erro": str(e), "detalhes": e.detalhes}
+        r.pop("oficial", None)
+        return {**r, "aviso": AVISO}
 
     return mcp

@@ -1,0 +1,113 @@
+# Toda segunda-feira: verifica se saiu versão nova da calculadora oficial da Receita.
+# Se saiu, monta as imagens com a versão nova, faz um teste de fumaça com dados reais
+# e abre um PR trocando VERSAO/COMMIT em calculadora/Dockerfile. O merge do PR publica o site.
+name: Atualizar calculadora oficial
+
+on:
+  schedule:
+    - cron: "0 11 * * 1"  # segunda, 08:00 em Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  OFICIAL: https://github.com/ReceitaFederal/calculadora-rtc-regime-regular
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Compara versões
+        id: versao
+        run: |
+          atual=$(sed -n 's/^ARG VERSAO=//p' calculadora/Dockerfile)
+          nova=$(git ls-remote --tags --refs "$OFICIAL" | awk -F/ '{print $3}' | grep -E '^[0-9]+(\.[0-9]+)*$' | sort -V | tail -1)
+          echo "atual=$atual" >> "$GITHUB_OUTPUT"
+          echo "nova=$nova" >> "$GITHUB_OUTPUT"
+          if [ -z "$nova" ] || [ "$nova" = "$atual" ] || [ "$(printf '%s\n%s\n' "$atual" "$nova" | sort -V | tail -1)" = "$atual" ]; then
+            echo "Sem versão nova (atual $atual, mais recente $nova)."
+            echo "tem=false" >> "$GITHUB_OUTPUT"
+          else
+            commit=$(git ls-remote "$OFICIAL" "refs/tags/$nova^{}" | cut -f1)
+            [ -n "$commit" ] || commit=$(git ls-remote "$OFICIAL" "refs/tags/$nova" | cut -f1)
+            echo "commit=$commit" >> "$GITHUB_OUTPUT"
+            echo "tem=true" >> "$GITHUB_OUTPUT"
+            echo "Versão nova: $nova ($commit)"
+          fi
+
+      - name: PR já aberto?
+        if: steps.versao.outputs.tem == 'true'
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ramo="atualizar-calculadora-${{ steps.versao.outputs.nova }}"
+          echo "ramo=$ramo" >> "$GITHUB_OUTPUT"
+          if gh pr list --head "$ramo" --state all --json number --jq '.[0].number' | grep -q .; then
+            echo "Já existe PR para $ramo."
+            echo "existe=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Atualiza o Dockerfile
+        if: steps.versao.outputs.tem == 'true' && steps.pr.outputs.existe != 'true'
+        run: |
+          sed -i "s/^ARG VERSAO=.*/ARG VERSAO=${{ steps.versao.outputs.nova }}/; s/^ARG COMMIT=.*/ARG COMMIT=${{ steps.versao.outputs.commit }}/" calculadora/Dockerfile
+          git diff
+
+      - name: Monta as imagens e faz teste de fumaça
+        if: steps.versao.outputs.tem == 'true' && steps.pr.outputs.existe != 'true'
+        id: fumaca
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          docker compose up -d --build 2>&1 | tail -20
+          for i in $(seq 1 60); do curl -sf localhost:8000/api/versao > versao.json && break; sleep 3; done
+          {
+            echo "### Teste de fumaça"
+            echo '```'
+            echo "versao: $(cat versao.json)"
+            echo "busca arroz: $(curl -s 'localhost:8000/api/busca?q=arroz&tipo=ncm' | jq '.ncm | length') resultados"
+            echo "arroz (1006.30.21), benefícios: $(curl -s localhost:8000/api/produto/10063021 | jq -c '[.classificacoes[].cClassTrib]')"
+            echo "educação (1.2201.12.00), benefícios: $(curl -s localhost:8000/api/servico/122011200 | jq -c '[.classificacoes[].cClassTrib]')"
+            echo "simulação 2026, total: $(curl -s -X POST localhost:8000/api/simular -H 'Content-Type: application/json' -d '{"data":"2026-11-23","uf":"SP","municipio":3550308,"itens":[{"tipo":"ncm","codigo":"84713012","valor":1000}]}' | jq '.totais.total')"
+            echo '```'
+          } > fumaca.md
+          cat fumaca.md
+          docker compose logs --tail 30 || true
+          # falha se o arroz perdeu a cesta básica (sinal de mudança de esquema no banco oficial)
+          curl -s localhost:8000/api/produto/10063021 | jq -e '[.classificacoes[].cClassTrib] | index("200003")' > /dev/null
+
+      - name: Abre o PR
+        if: steps.versao.outputs.tem == 'true' && steps.pr.outputs.existe != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          nova="${{ steps.versao.outputs.nova }}"; atual="${{ steps.versao.outputs.atual }}"; ramo="${{ steps.pr.outputs.ramo }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898900+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$ramo"
+          git add calculadora/Dockerfile
+          git commit -m "Calculadora oficial $atual → $nova"
+          git push -u origin "$ramo"
+          resultado="✅ passou"
+          [ "${{ steps.fumaca.outcome }}" = "success" ] || resultado="❌ falhou: confira antes de fazer o merge"
+          curl -sf "https://raw.githubusercontent.com/ReceitaFederal/calculadora-rtc-regime-regular/$nova/CHANGELOG.md" \
+            | awk '/^## /{n++} n==1' | head -60 > changelog.md || true  # só a seção da versão mais recente
+          {
+            echo "Saiu a versão **$nova** da [calculadora oficial]($OFICIAL) (atual: $atual)."
+            echo
+            echo "- Commit da tag: \`${{ steps.versao.outputs.commit }}\` (o build confere este hash)"
+            echo "- Comparação: $OFICIAL/compare/$atual...$nova"
+            echo "- Teste de fumaça: $resultado"
+            echo
+            [ -f fumaca.md ] && cat fumaca.md
+            echo
+            if [ -s changelog.md ]; then echo "### Changelog oficial"; echo; cat changelog.md; fi
+            echo
+            echo "Ao fazer o merge, o deploy publica a versão nova na VPS."
+          } > corpo.md
+          gh pr create --title "Calculadora oficial $atual → $nova" --body-file corpo.md --base main --head "$ramo"

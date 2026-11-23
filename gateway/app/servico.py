@@ -7,6 +7,7 @@ from datetime import date
 
 from .busca import buscar, formatar_nbs, formatar_ncm, so_digitos
 from .calculadora import Calculadora, NaoEncontrado, indice, limpar_descricao
+from .simulador import INICIO_ALIQUOTAS_INFORMADAS, Simulacao, montar_operacao, simplificar
 
 CLASSIFICACAO_PADRAO = "000001"  # tributação integral (regra geral)
 
@@ -130,6 +131,34 @@ class Consultas:
             # Também aceitas para o código, sem anexo (comum em produtos com Imposto Seletivo)
             "outrasPermitidas": [resumo_classificacao(c) for c in especificas if not ligada_por_anexo(c)],
             "regraGeral": CLASSIFICACAO_PADRAO,
+        }
+
+    async def simular(self, s: "Simulacao") -> dict:
+        """Monta a operação no formato oficial, calcula na calculadora oficial e simplifica."""
+        detalhes = await asyncio.gather(*(
+            (self.calc.ncm(it.codigo, s.data) if it.tipo == "ncm" else self.calc.nbs(it.codigo, s.data))
+            for it in s.itens
+        ), return_exceptions=True)
+        incide_is, unidades, avisos = {}, {}, []
+        for n, (it, d) in enumerate(zip(s.itens, detalhes)):
+            if isinstance(d, Exception):
+                continue  # a calculadora oficial vai apontar o erro no item
+            incide_is[n] = bool(d.get("tributadoPeloImpostoSeletivo"))
+            unidades[n] = d.get("unidade")
+            if incide_is[n] and s.data >= INICIO_ALIQUOTAS_INFORMADAS and it.aliquotaIS is None:
+                avisos.append(f"Item {n + 1}: incide Imposto Seletivo; informe a alíquota do IS para calcular.")
+        operacao = montar_operacao(s, incide_is, unidades)
+        resposta, simulado = await self.calc.calcular(operacao)
+        resultado = simplificar(resposta, s)
+        if simulado:
+            avisos.append("Cálculo simulado: usa as alíquotas que você informou, não alíquotas oficiais definitivas.")
+        return {
+            **resultado,
+            "simulado": simulado,
+            "avisos": avisos,
+            "data": s.data.isoformat(),
+            # transparência: exatamente o que foi enviado e recebido da calculadora oficial
+            "oficial": {"requisicao": operacao, "resposta": resposta},
         }
 
     async def classificacao(self, cclass: str, data: date) -> dict:

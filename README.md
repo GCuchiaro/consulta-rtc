@@ -11,10 +11,18 @@ independente: não é um site do governo e não substitui a orientação de um c
 
 ## O que tem
 
-- **Site** (`web/`): busca por nome ou código (com a hierarquia da NCM/NBS) e ficha do código.
-- **API** (`/api/...`, documentação em `/api/docs`): `busca`, `produto/{ncm}`, `servico/{nbs}`, `classificacao/{cClassTrib}`, `versao`.
+- **Site** (`web/`), com três telas:
+  - **Consulta:** busca por nome ou código (com a hierarquia da NCM/NBS) e ficha do código.
+  - **Simulador:** monta uma operação (data, UF, município, itens) e calcula CBS, IBS e IS na
+    calculadora oficial, item a item, com a memória de cálculo e o JSON enviado/recebido. Em 2026 usa
+    as alíquotas de teste oficiais; a partir de 2027 a calculadora exige alíquotas nominais informadas
+    (o resultado sai como simulado).
+  - **Validar XML:** valida NF-e, NFC-e, NFS-e, CT-e etc. contra os XSD oficiais (documento completo ou
+    só o grupo de tributação), com o erro traduzido e a linha destacada. O XML não é guardado.
+- **API** (`/api/...`, documentação em `/api/docs`): `busca`, `produto/{ncm}`, `servico/{nbs}`,
+  `classificacao/{cClassTrib}`, `simular` (POST), `validar-xml` (POST), `ufs`, `municipios`, `versao`.
 - **Servidor MCP** (`/mcp/`, Streamable HTTP): ferramentas `buscar_ncm_nbs`, `consultar_produto`,
-  `consultar_servico` e `consultar_classificacao`, para usar no Claude ou em outro assistente.
+  `consultar_servico`, `consultar_classificacao` e `simular_operacao`, para usar no Claude ou em outro assistente.
 
 ## Como funciona
 
@@ -62,8 +70,14 @@ cd gateway && python -m venv .venv && .venv/Scripts/python -m pip install -r req
 
 ## Atualizar a calculadora oficial
 
-Troque `VERSAO` e `COMMIT` em `calculadora/Dockerfile` pela nova tag do repositório oficial e o
-hash do commit dela (`git rev-list -n1 <tag>`). O build falha se o hash não conferir.
+Automático: `.github/workflows/atualizar-calculadora.yml` roda toda segunda-feira (e sob demanda).
+Se saiu tag nova no repositório oficial, ele troca `VERSAO`/`COMMIT` em `calculadora/Dockerfile`,
+monta as imagens, faz um teste de fumaça com dados reais e abre um PR com o resultado e o changelog
+oficial. O merge publica. Requer, em Settings → Actions → General, a opção
+"Allow GitHub Actions to create and approve pull requests".
+
+Manual: troque `VERSAO` e `COMMIT` pela nova tag e o hash do commit dela (`git rev-list -n1 <tag>`).
+O build falha se o hash não conferir.
 
 ## Deploy (VPS)
 
