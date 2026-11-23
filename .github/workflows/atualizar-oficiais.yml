@@ -62,7 +62,7 @@ jobs:
         run: |
           for i in $(seq 1 60); do curl -sf localhost:8000/api/saude > /dev/null && break; sleep 3; done
           sleep 10
-          scripts/teste-fumaca.sh http://localhost:8000 2>&1 | tee fumaca.txt
+          set -o pipefail; bash scripts/teste-fumaca.sh http://localhost:8000 2>&1 | tee fumaca.txt
 
       - name: Publica (commit na main e deploy)
         if: steps.v.outputs.mudou != '' && steps.fumaca.outcome == 'success'
