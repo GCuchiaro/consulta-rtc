@@ -1,0 +1,27 @@
+# Produção na VPS (/opt/consulta-rtc). Copiado pelo deploy do GitHub Actions.
+# O HTTPS fica no proxy único da VPS (/opt/proxy), que alcança o gateway pela rede "web".
+# A calculadora oficial fica só na rede interna: não é exposta à internet.
+services:
+  calculadora:
+    image: consulta-rtc-calculadora:latest
+    restart: unless-stopped
+    mem_limit: 1g
+    networks: [interna]
+
+  gateway:
+    image: consulta-rtc-gateway:latest
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      CALC_URL: http://calculadora:8080/api/calculadora
+    expose:
+      - "8000"
+    depends_on:
+      calculadora:
+        condition: service_healthy
+    networks: [interna, web]
+
+networks:
+  interna: {}
+  web:
+    external: true

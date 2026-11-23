@@ -1,0 +1,23 @@
+# Desenvolvimento local: docker compose up --build  →  http://localhost:8000
+services:
+  calculadora:
+    build: ./calculadora
+    image: consulta-rtc-calculadora:dev
+    restart: unless-stopped
+    mem_limit: 1g
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+      additional_contexts:
+        calc: service:calculadora
+    image: consulta-rtc-gateway:dev
+    restart: unless-stopped
+    environment:
+      CALC_URL: http://calculadora:8080/api/calculadora
+    ports:
+      - "8000:8000"
+    depends_on:
+      calculadora:
+        condition: service_healthy

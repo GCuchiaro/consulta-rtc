@@ -1,0 +1,12 @@
+# Bloco do Consulta RTC no proxy único da VPS. O deploy copia este arquivo para
+# /opt/proxy/sites/consulta-rtc.caddy e recarrega o Caddy.
+rtc.giovannicuchiaro.com {
+	encode zstd gzip
+	reverse_proxy consulta-rtc-gateway-1:8000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

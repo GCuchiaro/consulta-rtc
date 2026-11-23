@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Consulta RTC</title>
+  <meta name="description" content="Consulte como produtos (NCM) e serviços (NBS) são tributados na Reforma Tributária: CBS, IBS, Imposto Seletivo e cClassTrib, com a calculadora oficial da Receita.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="wrap">
+      <a class="marca" href="#/">Consulta <b>RTC</b></a>
+      <span class="sub">Reforma Tributária do Consumo · CBS · IBS · IS</span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="busca">
+      <h1>Como meu produto ou serviço é tributado na Reforma?</h1>
+      <p class="lead">Digite o nome ou o código <abbr title="Nomenclatura Comum do Mercosul (produtos)">NCM</abbr>/<abbr title="Nomenclatura Brasileira de Serviços">NBS</abbr>. Os dados vêm da calculadora oficial da Receita Federal.</p>
+      <form id="form-busca" autocomplete="off">
+        <input id="q" type="search" placeholder="Ex.: arroz, cerveja, 2203.00.00, consultoria contábil" aria-label="Buscar produto ou serviço" minlength="2" required>
+        <select id="data" aria-label="Data de referência"></select>
+        <button type="submit">Buscar</button>
+      </form>
+      <div class="filtros" role="radiogroup" aria-label="Tipo">
+        <label><input type="radio" name="tipo" value="todos" checked> Tudo</label>
+        <label><input type="radio" name="tipo" value="ncm"> Produtos (NCM)</label>
+        <label><input type="radio" name="tipo" value="nbs"> Serviços (NBS)</label>
+      </div>
+    </section>
+
+    <section id="resultados" aria-live="polite"></section>
+    <section id="ficha" aria-live="polite"></section>
+  </main>
+
+  <footer class="rodape">
+    <div class="wrap">
+      <p><b>Projeto independente e de código aberto.</b> Não é um site do governo. Os cálculos e tabelas vêm da
+        <a href="https://github.com/ReceitaFederal/calculadora-rtc-regime-regular" target="_blank" rel="noopener">Calculadora de Tributos oficial</a>
+        (Receita Federal/Serpro, licença MIT), usada sem modificações. Não substitui a orientação de um contador.</p>
+      <p id="versao" class="muted"></p>
+      <p class="muted">Use no Claude ou em outro assistente: servidor MCP em <code id="mcp-url"></code> · <a href="/api/docs">API</a></p>
+    </div>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+.upstream
+.git
+**/.venv
+**/__pycache__
+**/.pytest_cache
+gateway/tests
