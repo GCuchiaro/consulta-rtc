@@ -48,6 +48,9 @@ jobs:
         run: |
           docker build -t consulta-rtc-calculadora:latest calculadora
           docker build --build-context calc=docker-image://consulta-rtc-calculadora:latest \
+            -t consulta-rtc-calculadora-sn:latest calculadora-sn
+          docker build -t consulta-rtc-danfse:latest danfse
+          docker build --build-context calc=docker-image://consulta-rtc-calculadora:latest \
             -t consulta-rtc-gateway:latest -t consulta-rtc-gateway:${{ github.sha }} -f gateway/Dockerfile .
 
       - name: Acesso SSH à VPS
