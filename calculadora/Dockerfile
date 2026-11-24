@@ -21,7 +21,10 @@ COPY --from=build /src/calculadora/db/calculadora-pro.db ./calculadora/db/calcul
 RUN useradd --system --create-home app && chown -R app /app
 USER app
 EXPOSE 8080
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75"
+# Memória enxuta (só opções da JVM e do Spring, o código oficial não muda): heap em 50% do limite
+# do container, GC serial, só o compilador C1, pilhas menores e no máximo 16 threads HTTP.
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=50 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xss512k -XX:ReservedCodeCacheSize=32m" \
+    SERVER_TOMCAT_THREADS_MAX=16
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s \
   CMD bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf "GET /api/calculadora/dados-abertos/versao HTTP/1.0\r\n\r\n" >&3 && grep -q "200" <&3'
 CMD ["java", "-Dspring.profiles.active=offline", "-jar", "app.jar"]

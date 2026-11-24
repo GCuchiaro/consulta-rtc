@@ -90,8 +90,9 @@ Testes do gateway (Python 3.12): `cd gateway && pip install -r requirements.txt 
 `.github/workflows/deploy.yml`: a cada push na `main` (ou disparo do robô), roda os testes, monta as
 quatro imagens, envia por SSH à VPS, sobe com `deploy/docker-compose.yml` atrás do proxy Caddy
 (`deploy/Caddyfile`), espera os quatro serviços ficarem saudáveis e roda o teste de fumaça em
-produção. Segredos: `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`, `DEPLOY_HOST`. Memória: ~1 GB e
-~700 MB nas calculadoras, ~20 MB no DANFSe, ~70 MB no gateway.
+produção. Segredos: `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`, `DEPLOY_HOST`. Limites de memória:
+512 MB e 384 MB nas calculadoras (JVM enxuta: heap em 50% do limite, GC serial, C1, 16 threads HTTP),
+64 MB no DANFSe, 160 MB no gateway; ~1,1 GB no total.
 
 ## Licença
 

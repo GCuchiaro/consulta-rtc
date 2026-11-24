@@ -5,25 +5,25 @@ services:
   calculadora:
     image: consulta-rtc-calculadora:latest
     restart: unless-stopped
-    mem_limit: 1g
+    mem_limit: 512m
     networks: [interna]
 
   calculadora-sn:
     image: consulta-rtc-calculadora-sn:latest
     restart: unless-stopped
-    mem_limit: 768m
+    mem_limit: 384m
     networks: [interna]
 
   danfse:
     image: consulta-rtc-danfse:latest
     restart: unless-stopped
-    mem_limit: 128m
+    mem_limit: 64m
     networks: [interna]
 
   gateway:
     image: consulta-rtc-gateway:latest
     restart: unless-stopped
-    mem_limit: 256m
+    mem_limit: 160m
     environment:
       CALC_URL: http://calculadora:8080/api/calculadora
       RR_URL: http://calculadora:8080/api

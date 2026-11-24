@@ -5,7 +5,7 @@ services:
     build: ./calculadora
     image: consulta-rtc-calculadora:latest
     restart: unless-stopped
-    mem_limit: 1g
+    mem_limit: 512m
 
   calculadora-sn:         # Simples Nacional (Java); usa o banco da calculadora do regime regular
     build:
@@ -14,13 +14,13 @@ services:
         calc: service:calculadora
     image: consulta-rtc-calculadora-sn:latest
     restart: unless-stopped
-    mem_limit: 768m
+    mem_limit: 384m
 
   danfse:                 # gerador de DANFSe (Go)
     build: ./danfse
     image: consulta-rtc-danfse:latest
     restart: unless-stopped
-    mem_limit: 128m
+    mem_limit: 64m
 
   gateway:
     build:
@@ -30,6 +30,7 @@ services:
         calc: service:calculadora
     image: consulta-rtc-gateway:latest
     restart: unless-stopped
+    mem_limit: 160m
     environment:
       CALC_URL: http://calculadora:8080/api/calculadora
       RR_URL: http://calculadora:8080/api
