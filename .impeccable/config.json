@@ -3,10 +3,50 @@
     "ignoreRules": [],
     "ignoreFiles": [],
     "ignoreValues": [
-      { "rule": "overused-font", "value": "instrument serif", "createdAt": "2026-11-24T22:00:00.000Z", "reason": "fonte obrigatória do design system Giovanni Cuchiaro (BRAND.md)" },
-      { "rule": "marquee", "value": "*", "files": ["web/estilo.css", "web/index.html"], "createdAt": "2026-11-24T22:00:00.000Z", "reason": "faixa rolante é efeito especificado no BRAND.md (loop de 38 s, pausa no hover)" },
-      { "rule": "pulsing-dot", "value": "*", "files": ["web/estilo.css", "web/index.html"], "createdAt": "2026-11-24T22:00:00.000Z", "reason": "ponto pulsante de estado vem do guia do design system (.nc .dot); usado só no carregamento" },
-      { "rule": "cramped-padding", "value": "*", "files": ["web/index.html"], "createdAt": "2026-11-24T22:00:00.000Z", "reason": "falso positivo: as bandas têm padding-block var(--band) e o .wrap tem padding-inline var(--gut)" }
+      {
+        "rule": "overused-font",
+        "value": "instrument serif",
+        "createdAt": "2026-11-24T22:00:00.000Z",
+        "reason": "fonte obrigatória do design system Giovanni Cuchiaro (BRAND.md)"
+      },
+      {
+        "rule": "marquee",
+        "value": "*",
+        "files": [
+          "web/estilo.css",
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-24T22:00:00.000Z",
+        "reason": "faixa rolante é efeito especificado no BRAND.md (loop de 38 s, pausa no hover)"
+      },
+      {
+        "rule": "pulsing-dot",
+        "value": "*",
+        "files": [
+          "web/estilo.css",
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-24T22:00:00.000Z",
+        "reason": "ponto pulsante de estado vem do guia do design system (.nc .dot); usado só no carregamento"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-24T22:00:00.000Z",
+        "reason": "falso positivo: as bandas têm padding-block var(--band) e o .wrap tem padding-inline var(--gut)"
+      },
+      {
+        "rule": "cream-palette",
+        "value": "*",
+        "files": [
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-24T22:30:00.000Z",
+        "reason": "névoa #ECEAE6 é o fundo obrigatório do design system Giovanni Cuchiaro (token --bg)"
+      }
     ]
   }
 }
