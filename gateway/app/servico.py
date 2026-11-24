@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import re
 from datetime import date
 
 from .busca import buscar, formatar_nbs, formatar_ncm, so_digitos
-from .calculadora import Calculadora, NaoEncontrado, indice, limpar_descricao
+from .calculadora import Calculadora, CalculadoraIndisponivel, NaoEncontrado, indice, limpar_descricao
 from .simulador import INICIO_ALIQUOTAS_INFORMADAS, Simulacao, montar_operacao, simplificar
 
 CLASSIFICACAO_PADRAO = "000001"  # tributação integral (regra geral)
@@ -86,7 +87,7 @@ class Consultas:
             self._indices[chave] = itens
         return self._indices[chave]
 
-    async def buscar(self, q: str, tipo: str, data: date, limite: int = 20) -> dict:
+    async def buscar(self, q: str, tipo: str, data: date, limite: int = 40) -> dict:
         resultado: dict[str, list] = {}
         for t in ("ncm", "nbs"):
             if tipo not in ("todos", t):
@@ -95,10 +96,33 @@ class Consultas:
             achados = buscar(await self._itens(t, data), q, "codigo", limite, campo_texto="_busca")
             resultado[t] = [
                 {"codigo": i["codigo"], "codigoFormatado": fmt(i["codigo"]),
-                 "descricao": i["descricao"], "caminho": i["caminho"]}
+                 "descricao": i["descricao"], "caminho": i["caminho"],
+                 "beneficios": self._beneficios(t, i["codigo"])}
                 for i in achados
             ]
+        if resultado.get("nbs"):
+            # Serviços: a ficha também conta a tabela da NFS-e (ex.: profissões intelectuais).
+            sem = [i for i in resultado["nbs"] if not i["beneficios"]]
+            extras = await asyncio.gather(*(self._beneficios_nfse(i["codigo"], data) for i in sem))
+            for i, n in zip(sem, extras):
+                i["beneficios"] = n
         return resultado
+
+    async def _beneficios_nfse(self, nbs: str, data: date) -> int:
+        try:
+            sit = await self.calc.nfse_situacoes(nbs, data)
+        except CalculadoraIndisponivel:
+            return 0
+        return len({s.get("codigoClassificacaoTributaria") for s in sit} - {None, CLASSIFICACAO_PADRAO})
+
+    @functools.lru_cache(maxsize=4096)
+    def _beneficios(self, tipo: str, codigo: str) -> int:
+        """Quantas classificações um anexo da LC 214 liga ao código (a ficha confirma cada uma)."""
+        try:
+            return sum(1 for c, anexos in indice.candidatas(tipo, codigo).items()
+                       if anexos and c != CLASSIFICACAO_PADRAO)
+        except CalculadoraIndisponivel:
+            return 0
 
     async def item(self, tipo: str, codigo: str, data: date) -> dict:
         """Ficha de um NCM (produto) ou NBS (serviço) na data informada."""

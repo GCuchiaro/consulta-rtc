@@ -115,7 +115,11 @@ window.RTC = (() => {
       tela.montar(el);
     }
     elementos[nome].hidden = false;
-    $$(".nav a").forEach((a) => a.classList.toggle("ativa", a.dataset.nav === tela.nav));
+    $$(".nav a").forEach((a) => {
+      const ativa = a.dataset.nav === tela.nav;
+      a.classList.toggle("ativa", ativa);
+      if (ativa) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
     tela.entrar && tela.entrar(args, elementos[nome]);
     return true;
   }

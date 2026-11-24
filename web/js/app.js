@@ -19,11 +19,7 @@
     anterior = tela;
   };
 
-  // Landing: botão "ver o que ela faz" rola até a seção (sem mexer no hash, que é das rotas) e busca direta.
-  document.addEventListener("click", (ev) => {
-    const b = ev.target.closest("[data-rolar]");
-    if (b) document.getElementById(b.dataset.rolar)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  // Landing: a busca da abertura leva direto aos resultados.
   $("#lp-busca").addEventListener("submit", (ev) => {
     ev.preventDefault();
     const q = $("#lp-q").value.trim();
@@ -38,7 +34,7 @@
     const c = v.calculadora || {}, s = v.simplesNacional || {};
     const txt = `Regime regular ${c.versaoApp || "?"} · Simples Nacional ${s.versaoApp || "?"} · base ${c.versaoDb || "?"} de ${dataBR(c.dataVersaoDb)}`;
     $("#versoes").textContent = `${txt} · Consulta RTC ${v.projeto}`;
-    $("#lp-versoes").textContent = `Em uso agora: ${txt}.`;
+    $("#lp-versoes").textContent = txt;
   }).catch(() => {
     $("#versoes").textContent = "Serviços oficiais indisponíveis no momento.";
     $("#lp-versoes").textContent = "Não foi possível consultar as versões agora.";

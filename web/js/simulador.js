@@ -3,41 +3,58 @@
 (() => {
   const { $, $$, esc, reais, pct, hoje, api, postJSON, baixar, cabeca, subNav, guardar, ler, jsonBruto } = RTC;
 
+  RTC.seqSugestoes = 0;
   RTC.abasSimuladores = (ativo) => subNav([["#/simulador", "Regime regular", "rr"], ["#/simples", "Simples Nacional", "sn"]], ativo);
 
   // ---- campo de produto/serviço com sugestões (usado nos dois simuladores) ----
   RTC.ligarBuscaProduto = function (item, { data, aoEscolher }) {
     const input = $(".cod-busca", item);
     const ul = $(".sugestoes", item);
+    const id = `sug-${++RTC.seqSugestoes}`;
+    ul.id = id; ul.setAttribute("role", "listbox");
+    Object.entries({ role: "combobox", "aria-autocomplete": "list", "aria-expanded": "false", "aria-controls": id })
+      .forEach(([k, v]) => input.setAttribute(k, v));
+    const abrir = (sim) => { ul.hidden = !sim; input.setAttribute("aria-expanded", String(sim)); };
     let timer, ultimo = "";
     input.addEventListener("input", () => {
       item.dataset.tipo = ""; item.dataset.codigo = "";
       clearTimeout(timer);
       const q = input.value.trim();
-      if (q.length < 2) { ul.hidden = true; return; }
+      if (q.length < 2) { abrir(false); return; }
       timer = setTimeout(async () => {
         ultimo = q;
         try {
           const r = await api(`/api/busca?q=${encodeURIComponent(q)}&tipo=todos&data=${data()}`);
           if (ultimo !== q) return;
           const itens = [...(r.ncm || []).slice(0, 8).map((i) => ({ ...i, tipo: "ncm" })), ...(r.nbs || []).slice(0, 6).map((i) => ({ ...i, tipo: "nbs" }))];
-          ul.innerHTML = itens.length ? itens.map((i) => `<li><button type="button" data-tipo="${i.tipo}" data-codigo="${i.codigo}" data-rotulo="${esc(`${i.codigoFormatado} · ${i.descricao}`)}">
+          ul.innerHTML = itens.length ? itens.map((i) => `<li role="none"><button type="button" role="option" tabindex="-1" data-tipo="${i.tipo}" data-codigo="${i.codigo}" data-rotulo="${esc(`${i.codigoFormatado} · ${i.descricao}`)}">
               <span class="cod">${i.tipo.toUpperCase()} ${esc(i.codigoFormatado)}</span>
               <span>${(i.caminho || []).length ? `<span class="trilha">${esc(i.caminho.slice(-2).join(" › "))}</span>` : ""}${esc(i.descricao)}</span></button></li>`).join("")
-            : `<li class="vazio">Nada encontrado com esse termo</li>`;
-          ul.hidden = false;
-        } catch (e) { ul.hidden = true; }
+            : `<li class="vazio" role="none">Nada encontrado com esse termo</li>`;
+          abrir(true);
+        } catch (e) { abrir(false); }
       }, 250);
     });
     ul.addEventListener("click", (ev) => {
       const b = ev.target.closest("button[data-codigo]");
       if (!b) return;
       item.dataset.tipo = b.dataset.tipo; item.dataset.codigo = b.dataset.codigo;
-      input.value = b.dataset.rotulo; ul.hidden = true;
+      input.value = b.dataset.rotulo; abrir(false); input.focus();
       aoEscolher(b.dataset.tipo, b.dataset.codigo);
     });
-    input.addEventListener("keydown", (ev) => { if (ev.key === "Escape") ul.hidden = true; });
-    document.addEventListener("click", (ev) => { if (!item.contains(ev.target)) ul.hidden = true; });
+    // Setas percorrem as sugestões, Enter escolhe (clique do botão), Esc fecha e volta ao campo.
+    const opcoes = () => $$("button[data-codigo]", ul);
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") abrir(false);
+      if (ev.key === "ArrowDown" && !ul.hidden && opcoes().length) { ev.preventDefault(); opcoes()[0].focus(); }
+    });
+    ul.addEventListener("keydown", (ev) => {
+      const lista = opcoes(), i = lista.indexOf(document.activeElement);
+      if (ev.key === "ArrowDown") { ev.preventDefault(); lista[Math.min(i + 1, lista.length - 1)]?.focus(); }
+      if (ev.key === "ArrowUp") { ev.preventDefault(); if (i <= 0) input.focus(); else lista[i - 1].focus(); }
+      if (ev.key === "Escape") { abrir(false); input.focus(); }
+    });
+    document.addEventListener("click", (ev) => { if (!item.contains(ev.target)) abrir(false); });
   };
 
   // Opções de cClassTrib para um código (regra geral + benefícios + outras aceitas).
@@ -69,13 +86,13 @@
               <label class="campo c6"><span>Município</span><select id="s-mun" required><option value="">Escolha a UF</option></select></label>
             </div>
           </fieldset>
-          <fieldset id="s-aliq" hidden style="margin-top:var(--space-6)"><legend>Alíquotas nominais · obrigatórias a partir de 2027</legend>
+          <fieldset id="s-aliq" hidden style="margin-top:var(--space-6)"><legend>Alíquotas para testar · obrigatórias a partir de 2027</legend>
             <div class="grade">
               <label class="campo c4"><span>CBS (%)</span><input id="s-cbs" type="number" step="0.0001" min="0" value="8.8"></label>
               <label class="campo c4"><span>IBS estadual (%)</span><input id="s-ibsuf" type="number" step="0.0001" min="0" value="0.05"></label>
               <label class="campo c4"><span>IBS municipal (%)</span><input id="s-ibsmun" type="number" step="0.0001" min="0" value="0.05"></label>
             </div>
-            <p class="nota">Pré-preenchidas com o exemplo da documentação oficial. As alíquotas definitivas ainda serão fixadas por resolução; o resultado sai marcado como simulado.</p>
+            <p class="aviso"><b>Não são as alíquotas oficiais.</b> Os valores vêm do exemplo da documentação da calculadora; as alíquotas de 2027 em diante ainda serão fixadas por resolução. Troque pelos números que quer testar: o resultado sai marcado como simulado.</p>
           </fieldset>
           <p class="nota" id="s-2026">Em 2026 a calculadora usa as alíquotas de teste oficiais: CBS 0,9% e IBS 0,1%.</p>
           <hr class="separador">
@@ -99,12 +116,12 @@
       $("#s-form", el).addEventListener("submit", (ev) => { ev.preventDefault(); calcular(el); });
       adicionarItem(el);
     },
-    entrar([, tipo, codigo], el) {
+    entrar([, tipo, codigo, cClassTrib], el) {
       document.title = "Simulador · Consulta RTC";
       if ((tipo === "ncm" || tipo === "nbs") && codigo) {
         const vazio = $$(".item", el).find((it) => !it.dataset.codigo);
         if (vazio) vazio.remove();
-        adicionarItem(el, { tipo, codigo });
+        adicionarItem(el, { tipo, codigo, cClassTrib });
         history.replaceState(null, "", "#/simulador");
       }
     },
@@ -151,12 +168,33 @@
         <label class="campo c3"><span>Quantidade</span><input class="qtd" type="number" step="0.0001" min="0" placeholder="1"></label>
         <label class="campo c8"><span>Classificação tributária</span><select class="cclass"><option value="000001">000001 · Tributação integral (regra geral)</option></select></label>
         <label class="campo c4 campo-is" hidden><span>Alíquota do IS (%)</span><input class="aliq-is" type="number" step="0.0001" min="0" placeholder="ex.: 10"></label>
-      </div>`;
+      </div>
+      <p class="aviso aviso-item" hidden></p>`;
     $("#s-itens", el).appendChild(it);
     renumerar(el);
     $(".remover", it).addEventListener("click", () => { it.remove(); renumerar(el); });
     RTC.ligarBuscaProduto(it, { data: () => $("#s-data", el).value || hoje(), aoEscolher: () => carregarClasses(el, it) });
-    if (pre.tipo && pre.codigo) { it.dataset.tipo = pre.tipo; it.dataset.codigo = pre.codigo; $(".cod-busca", it).value = pre.codigo; carregarClasses(el, it); }
+    $(".cclass", it).addEventListener("change", () => avisoBeneficio(it));
+    if (pre.tipo && pre.codigo) {
+      Object.assign(it.dataset, { tipo: pre.tipo, codigo: pre.codigo, cclassPre: pre.cClassTrib || "" });
+      $(".cod-busca", it).value = pre.codigo;
+      carregarClasses(el, it);
+    }
+  }
+
+  const beneficiosDo = (it) => { try { return JSON.parse(it.dataset.beneficios || "[]"); } catch (e) { return []; } };
+
+  // Regra geral escolhida num código que tem benefício em lei: diz qual é e oferece trocar.
+  function avisoBeneficio(it) {
+    const aviso = $(".aviso-item", it), b = beneficiosDo(it);
+    const regraGeral = $(".cclass", it).value === "000001";
+    aviso.hidden = !(regraGeral && b.length);
+    if (aviso.hidden) return;
+    const [p] = b;
+    aviso.innerHTML = `Este código tem ${b.length === 1 ? "1 benefício previsto" : `${b.length} benefícios previstos`} na LC 214
+      (${esc(p.c)} · ${esc(String(p.t).toLowerCase())}). Você está simulando a regra geral.
+      <button type="button" class="btn btn-fantasma btn-p">Usar ${esc(p.c)}</button>`;
+    $("button", aviso).addEventListener("click", () => { $(".cclass", it).value = p.c; avisoBeneficio(it); });
   }
 
   function renumerar(el) {
@@ -171,7 +209,11 @@
     try {
       const { html, ficha } = await RTC.opcoesClassificacao(tipo, codigo, $("#s-data", el).value || hoje());
       sel.innerHTML = html;
-      if ([...sel.options].some((o) => o.value === atual)) sel.value = atual;
+      const quer = it.dataset.cclassPre || atual;
+      if ([...sel.options].some((o) => o.value === quer)) sel.value = quer;
+      it.dataset.cclassPre = "";
+      it.dataset.beneficios = JSON.stringify((ficha.classificacoes || []).map((c) => ({ c: c.cClassTrib, t: c.tratamento || c.descricao })));
+      avisoBeneficio(it);
       it.dataset.is = ficha.impostoSeletivo?.incide ? "1" : "";
       const campo = $(".cod-busca", it);
       if (campo.value === codigo) campo.value = `${ficha.codigoFormatado} · ${ficha.descricao || ""}`;
@@ -208,6 +250,7 @@
       alvo.innerHTML = resultado(el, r);
       ligarXml(el);
       alvo.scrollIntoView({ behavior: "smooth", block: "start" });
+      $("#s-resumo", el)?.focus({ preventScroll: true });
     } catch (e) { alvo.innerHTML = `<p class="caixa-erro"><b>${esc(e.message)}</b></p>`; }
   }
 
@@ -219,7 +262,8 @@
 
   function resultado(el, r) {
     const t = r.totais || {};
-    const rotulos = $$(".item", el).map((it) => $(".cod-busca", it).value);
+    const domItens = $$(".item", el);
+    const rotulos = domItens.map((it) => $(".cod-busca", it).value);
     const itens = (r.itens || []).map((i) => {
       const nome = `<p class="eyebrow">Item ${String(i.numero).padStart(2, "0")} · ${esc(rotulos[i.numero - 1] || "")}</p>`;
       if (i.erros?.length) return `<article class="card">${nome}<span class="tag erro"><i></i>${esc(i.estadoTexto)}</span>
@@ -229,6 +273,8 @@
       return `<article class="card">
         <div class="card-titulo">${nome}<span class="tag ${i.estado === "CALCULADO" ? "ok" : "info"}"><i></i>${esc(i.estadoTexto)}</span></div>
         <p class="muted mono" style="font-size:13px">CST ${esc(i.cst)} · cClassTrib ${esc(i.cClassTrib)} · base de cálculo ${reais(i.base)}</p>
+        ${i.cClassTrib === "000001" && domItens[i.numero - 1] && beneficiosDo(domItens[i.numero - 1]).length
+          ? `<p class="aviso">Calculado pela regra geral. Este código tem benefício previsto na LC 214 (${esc(beneficiosDo(domItens[i.numero - 1])[0].c)}): escolha a classificação no item e calcule de novo se a operação se enquadra.</p>` : ""}
         <div class="tabela-wrap"><table>
           <thead><tr><th>Tributo</th><th class="num">Alíquota</th><th class="num">Redução</th><th class="num">Efetiva</th><th class="num">Valor</th></tr></thead>
           <tbody>${linha("CBS", i.cbs)}${linha("IBS estadual", i.ibsUf)}${linha("IBS municipal", i.ibsMun)}
@@ -240,6 +286,7 @@
     }).join("");
     return `
       ${(r.avisos || []).map((a) => `<p class="aviso">${esc(a)}</p>`).join("")}
+      <p class="resumo" id="s-resumo" tabindex="-1">Total de <b>${reais(t.total)}</b> em tributos sobre ${reais(t.base)} de base${Number(t.base) > 0 ? `, ${pct((Number(t.total) / Number(t.base)) * 100)} da base` : ""}${r.simulado ? ", com as alíquotas de teste informadas" : ""}.</p>
       <div class="kpis">
         <div class="kpi"><span>Base de cálculo</span><b>${reais(t.base)}</b></div>
         <div class="kpi"><span>CBS</span><b>${reais(t.cbs)}</b></div>
@@ -247,7 +294,7 @@
         ${t.is ? `<div class="kpi"><span>Imposto Seletivo</span><b>${reais(t.is)}</b></div>` : ""}
         <div class="kpi total"><span>Total de tributos</span><b>${reais(t.total)}</b></div>
       </div>
-      ${r.itensComErro ? `<p class="aviso">${r.itensComErro} item(ns) com inconsistência ficaram fora dos totais.</p>` : ""}
+      ${r.itensComErro ? `<p class="aviso">${r.itensComErro === 1 ? "1 item com inconsistência ficou" : `${r.itensComErro} itens com inconsistência ficaram`} fora dos totais.</p>` : ""}
       ${itens}
       <section class="card">
         <div class="card-titulo"><h3>XML dos grupos de tributação</h3><span class="eyebrow">gerado pela calculadora oficial</span></div>

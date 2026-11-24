@@ -22,7 +22,8 @@ def buscar(itens: list[dict], q: str, campo_codigo: str, limite: int = 30,
 
     - Só dígitos (com ou sem pontos): código que começa com eles.
     - Texto: todas as palavras precisam aparecer na descrição (sem acento).
-      Resultados cuja descrição começa com a primeira palavra vêm antes.
+      Antes vêm os que têm as palavras inteiras e, entre eles, os em que a primeira palavra
+      aparece mais cedo (no topo da hierarquia: "Arroz › …" antes de "Malas › … pó de arroz").
     """
     q = q.strip()
     if not q:
@@ -42,9 +43,11 @@ def buscar(itens: list[dict], q: str, campo_codigo: str, limite: int = 30,
             texto = i[chave_cache] = normalizar(i.get(campo_texto) or "")
         if all(t in texto for t in termos):
             palavras = set(re.findall(r"\w+", texto))
-            inicio = 0 if texto.startswith(termos[0]) else 1
-            palavras_inteiras = sum(t not in palavras for t in termos)
-            pontuados.append(((palavras_inteiras, inicio, len(texto), i.get(campo_codigo, "")), i))
+            posicao = texto.find(termos[0])
+            # palavra inteira, aceitando plural/flexão curta ("cerveja" casa com "cervejas")
+            palavras_inteiras = sum(
+                not any(w == t or (w.startswith(t) and len(w) - len(t) <= 2) for w in palavras) for t in termos)
+            pontuados.append(((palavras_inteiras, posicao, len(texto), i.get(campo_codigo, "")), i))
     pontuados.sort(key=lambda p: p[0])
     return [i for _, i in pontuados[:limite]]
 

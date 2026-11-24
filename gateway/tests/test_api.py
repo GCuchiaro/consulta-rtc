@@ -120,6 +120,7 @@ def test_busca_api(cliente):
     assert {i["codigo"] for i in corpo["ncm"]} == {"10063021", "10063011"}
     item = next(i for i in corpo["ncm"] if i["codigo"] == "10063021")
     assert item["caminho"] == ["Arroz", "Arroz semibranqueado"]
+    assert item["beneficios"] >= 1  # cesta básica, ligada por anexo
     assert corpo["nbs"] == []
 
 

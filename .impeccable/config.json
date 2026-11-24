@@ -1,0 +1,29 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "instrument serif",
+        "createdAt": "2026-11-24T12:27:45.996Z",
+        "reason": "design system Giovanni Cuchiaro do dono fixa Instrument Serif nos títulos (pedido no /goal)"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-11-24T12:27:46.488Z",
+        "reason": "design system Giovanni Cuchiaro do dono fixa Inter no texto (pedido no /goal)"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-24T12:27:47.297Z",
+        "reason": "falso positivo conferido: o input ocupa os 60px do .lp-busca-campo com texto centralizado e 16px laterais; as varreduras renderizadas não apontam"
+      }
+    ]
+  }
+}

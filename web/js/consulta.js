@@ -5,7 +5,11 @@
 
   const datas = () => [[hoje(), `Hoje · ${dataBR(hoje())}`], ["2027-01-01", "A partir de 01.01.2027"]];
 
-  function cardClasse(c) {
+  const EXEMPLOS = ["arroz", "cerveja", "medicamentos", "serviços de contabilidade", "2203.00.00"];
+  const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+
+  // sim = { tipo, codigo }: mostra o atalho para simular já com esta classificação.
+  function cardClasse(c, sim) {
     const red = c.reducao ? [["CBS", c.reducao.cbs], ["IBS UF", c.reducao.ibsUf], ["IBS mun.", c.reducao.ibsMun]]
       .filter(([, v]) => v != null).map(([t, v]) => `<span class="tag ok"><i></i>Redução ${t} ${pct(v)}</span>`).join("") : "";
     const extras = [
@@ -21,8 +25,23 @@
         ${c.tratamento ? `<p>${esc(c.tratamento)}</p>` : ""}
         ${(c.anexos || []).map((a) => `<p class="lei">LC 214/2025, Anexo ${esc(a.anexo)}${a.item ? `, item ${esc(a.item)}` : ""}: ${esc(a.texto)}</p>`).join("")}
         ${red || extras ? `<div class="tags">${red}${extras}</div>` : ""}
+        ${sim ? `<p class="classe-acao"><a href="#/simulador/${sim.tipo}/${esc(sim.codigo)}/${esc(c.cClassTrib)}">Simular com a classificação ${esc(c.cClassTrib)} →</a></p>` : ""}
       </div>
     </article>`;
+  }
+
+  // Frase de resposta da ficha: o benefício mais forte, ou a regra geral.
+  const forca = (c) => Math.max(...Object.values(c.reducao || {}).map(Number).filter((n) => !isNaN(n)), 0);
+  const melhorClasse = (classes) => [...classes].sort((a, b) => forca(b) - forca(a))[0];
+
+  function veredito(classes, is) {
+    if (!classes.length) return `<p class="veredito">Sem benefício previsto nos anexos da LC 214/2025: vale a <b>tributação integral</b>${is.incide ? " e incide Imposto Seletivo" : ""}.</p>`;
+    const melhor = melhorClasse(classes);
+    const a = (melhor.anexos || [])[0];
+    const como = melhor.tratamento && !/^padr/i.test(melhor.tratamento) ? melhor.tratamento.toLowerCase()
+      : forca(melhor) ? `redução de ${pct(forca(melhor))}` : "tratamento específico";
+    return `<p class="veredito">Pode ter <b>${esc(como)}</b>
+      <span class="veredito-ref">${esc(melhor.cClassTrib)}${a ? ` · LC 214, Anexo ${esc(a.anexo)}${a.item ? `, item ${esc(a.item)}` : ""}` : ""}${classes.length > 1 ? ` · mais ${plural(classes.length - 1, "hipótese", "hipóteses")} abaixo` : ""}</span></p>`;
   }
 
   RTC.registrar("consulta", {
@@ -42,6 +61,7 @@
           <label class="check"><input type="radio" name="c-tipo" value="ncm"> Só produtos (NCM)</label>
           <label class="check"><input type="radio" name="c-tipo" value="nbs"> Só serviços (NBS)</label>
         </div>
+        <div id="c-exemplos" class="exemplos"><span class="eyebrow">Experimente</span>${EXEMPLOS.map((e) => `<a href="#/busca/${encodeURIComponent(e)}">${esc(e)}</a>`).join("")}</div>
         <div id="c-res" aria-live="polite"></div>
         <div id="c-ficha" aria-live="polite"></div>`;
       const salva = ler("rtc-data");
@@ -57,6 +77,7 @@
       $$("input[name=c-tipo]", el).forEach((r) => r.addEventListener("change", () => { if (location.hash.startsWith("#/busca/")) RTC.rotear(); }));
     },
     entrar([rota, arg], el) {
+      $("#c-exemplos", el).hidden = !!arg;
       if (rota === "busca" && arg) return buscar(el, arg);
       if ((rota === "ncm" || rota === "nbs") && arg) return ficha(el, rota, arg);
       document.title = "Consulta RTC";
@@ -75,13 +96,22 @@
     try {
       const tipo = $("input[name=c-tipo]:checked", el).value;
       const r = await api(`/api/busca?q=${encodeURIComponent(q)}&tipo=${tipo}&data=${dataRef(el)}`);
+      RTC.ultimaBusca = q;
+      const VISIVEIS = 10;
       const grupo = (titulo, itens, rota) => !itens ? "" : `
-        <section class="grupo-res"><p class="eyebrow"><span>${titulo}</span><span>${itens.length}${itens.length >= 20 ? "+" : ""}</span></p>
-        ${itens.length ? `<ul class="lista">${itens.map((i) => `
-          <li><a href="#/${rota}/${i.codigo}"><span class="cod">${esc(i.codigoFormatado)}</span>
-            <span>${(i.caminho || []).length ? `<span class="trilha">${esc(i.caminho.join(" › "))}</span>` : ""}${esc(i.descricao)}</span></a></li>`).join("")}
-        </ul>` : `<p class="vazio">Nenhum resultado com esse termo.</p>`}</section>`;
+        <section class="grupo-res"><p class="eyebrow"><span>${titulo}</span><span>${itens.length}${itens.length >= 40 ? "+" : ""} ${itens.length === 1 ? "resultado" : "resultados"}</span></p>
+        ${itens.length ? `<ul class="lista">${itens.map((i, n) => `
+          <li${n >= VISIVEIS ? " hidden" : ""}><a href="#/${rota}/${i.codigo}"><span class="cod">${esc(i.codigoFormatado)}</span>
+            <span>${(i.caminho || []).length ? `<span class="trilha">${esc(i.caminho.slice(-2).join(" › "))}</span>` : ""}${esc(i.descricao)}</span>
+            ${i.beneficios ? `<span class="tag ok"><i></i>Benefício na LC 214</span>` : `<span></span>`}</a></li>`).join("")}
+        </ul>
+        ${itens.length > VISIVEIS ? `<button type="button" class="btn btn-fantasma btn-p mais">Mostrar mais ${itens.length - VISIVEIS}</button>` : ""}`
+        : `<p class="vazio">Nenhum resultado com esse termo.</p>`}</section>`;
       res.innerHTML = grupo("Produtos · NCM", r.ncm, "ncm") + grupo("Serviços · NBS", r.nbs, "nbs");
+      $$(".mais", res).forEach((b) => b.addEventListener("click", () => {
+        $$("li[hidden]", b.closest(".grupo-res")).forEach((li) => { li.hidden = false; });
+        b.remove();
+      }));
     } catch (e) {
       res.innerHTML = `<p class="erro">${esc(e.message)}</p>`;
     }
@@ -99,11 +129,17 @@
       const classes = r.classificacoes || [];
       const outras = r.outrasPermitidas || [];
       const nome = tipo === "ncm" ? "produto" : "serviço";
+      const voltar = RTC.ultimaBusca
+        ? `<a href="#/busca/${encodeURIComponent(RTC.ultimaBusca)}">← Resultados para “${esc(RTC.ultimaBusca)}”</a>`
+        : `<a href="#/consulta">← Nova consulta</a>`;
+      const sim = { tipo, codigo: r.codigo };
       alvo.innerHTML = `
-        <p style="margin-top:var(--space-6)"><a href="javascript:history.back()">← Voltar</a></p>
+        <p style="margin-top:var(--space-6)">${voltar}</p>
         <article class="card ficha-topo">
-          <p class="eyebrow">${tipo.toUpperCase()} <b>${esc(r.codigoFormatado)}</b>${(r.caminho || []).length ? ` · ${esc(r.caminho.join(" › "))}` : ""}</p>
+          <p class="eyebrow">${tipo.toUpperCase()} <b>${esc(r.codigoFormatado)}</b></p>
+          ${(r.caminho || []).length ? `<p class="ficha-trilha">${esc(r.caminho.join(" › "))} ›</p>` : ""}
           <h2 class="titulo">${esc(r.descricao || "Sem descrição na tabela oficial")}</h2>
+          ${veredito(classes, is)}
           <div class="tags">
             ${is.incide ? `<span class="tag alerta"><i></i>Incide Imposto Seletivo${is.aliquotaAdValorem != null ? ` · ${pct(is.aliquotaAdValorem)}` : ""}</span>`
                         : `<span class="tag ok"><i></i>Sem Imposto Seletivo</span>`}
@@ -111,20 +147,24 @@
             <span class="tag">Referência ${dataBR(r.data)}</span>
           </div>
           <div class="acoes esq">
-            <a class="btn btn-primario" href="#/simulador/${tipo}/${esc(r.codigo)}">Simular no regime regular</a>
+            ${classes.length
+              ? `<a class="btn btn-primario" href="#/simulador/${tipo}/${esc(r.codigo)}/${esc(melhorClasse(classes).cClassTrib)}">Simular com o benefício</a>
+                 <a class="btn btn-secundario" href="#/simulador/${tipo}/${esc(r.codigo)}/${esc(r.regraGeral)}">Simular a regra geral</a>`
+              : `<a class="btn btn-primario" href="#/simulador/${tipo}/${esc(r.codigo)}">Simular no regime regular</a>`}
             <a class="btn btn-secundario" href="#/simples/${tipo}/${esc(r.codigo)}">Simular no Simples Nacional</a>
           </div>
+          <p class="nota">Regime regular é a empresa do lucro real ou presumido; Simples Nacional, a optante pelo Simples.</p>
         </article>
         <section class="card">
-          <div class="card-titulo"><h2 class="secao">Benefícios deste ${nome}</h2><span class="eyebrow">${classes.length} classificação(ões)</span></div>
+          <div class="card-titulo"><h2 class="secao">Benefícios deste ${nome}</h2><span class="eyebrow">${plural(classes.length, "classificação", "classificações")}</span></div>
           ${classes.length
-            ? `<p class="muted" style="max-width:var(--measure)">Classificações tributárias (cClassTrib) que a calculadora oficial aceita para este código por constarem de um anexo da LC 214/2025${tipo === "nbs" ? " ou da tabela da NFS-e" : ""}. Cada uma tem condições próprias (destinatário, tipo de operação): confira a fundamentação antes de usar.</p>
-               ${classes.map(cardClasse).join("")}`
+            ? `<p class="muted" style="max-width:var(--measure)">Classificações tributárias (cClassTrib, o código que vai na nota) que a calculadora oficial aceita para este código por constarem de um anexo da LC 214/2025${tipo === "nbs" ? " ou da tabela da NFS-e" : ""}. Cada uma tem condições próprias (destinatário, tipo de operação): confira a fundamentação antes de usar.</p>
+               ${classes.map((c) => cardClasse(c, sim)).join("")}`
             : `<p class="muted">Nenhuma redução ou regime específico ligado a este código pelos anexos da LC 214/2025.</p>`}
           <p class="nota">Fora dessas hipóteses vale a tributação integral: CST 000, cClassTrib ${esc(r.regraGeral)}.</p>
           ${outras.length ? `<details style="margin-top:var(--space-4)"><summary>Outras ${outras.length} classificações aceitas, sem anexo</summary>
             <p class="muted">${is.incide ? "Produtos com Imposto Seletivo só podem usar as classificações desta lista." : "Situações específicas em que o código também pode ser usado."}</p>
-            ${outras.map(cardClasse).join("")}</details>` : ""}
+            ${outras.map((c) => cardClasse(c, sim)).join("")}</details>` : ""}
         </section>
         ${tipo === "nbs" ? `<section class="card" id="c-nfse"><h2 class="secao">Na NFS-e</h2><p class="carregando">Consultando as regras da NFS-e</p></section>` : ""}`;
       if (tipo === "nbs") nfse($("#c-nfse", el), r.codigo, data);
