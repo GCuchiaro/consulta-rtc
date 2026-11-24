@@ -11,7 +11,7 @@
         <input id="${prefixo}-arq" type="file" accept=".xml,text/xml,application/xml">
         <b>${titulo}</b><span class="muted">ou clique para escolher · até 2 MB</span><span class="mono" id="${prefixo}-nome"></span>
       </label>
-      <details style="margin-top:var(--space-4)"><summary>Colar o XML</summary>
+      <details style="margin-top:var(--s-4)"><summary>Colar o XML</summary>
         <textarea id="${prefixo}-texto" rows="8" spellcheck="false" placeholder="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;…"></textarea></details>`;
   }
   function ligarArquivo(el, prefixo, estado, aoCarregar) {
@@ -44,7 +44,7 @@
         ${abas("xml")}
         <form id="x-form" class="card" novalidate>
           ${areaArquivo("x", "Arraste o XML da nota")}
-          <div class="grade" style="margin-top:var(--space-6)">
+          <div class="grade" style="margin-top:var(--s-6)">
             <label class="campo c6"><span>Tipo de documento</span><select id="x-tipo"><option value="">Detectar pelo conteúdo</option></select></label>
             <label class="campo c6"><span>O que validar</span><select id="x-sub"><option value="nota">Documento completo</option><option value="grupo">Só o grupo de tributação</option></select></label>
           </div>
@@ -90,7 +90,7 @@
         ? `<div class="resultado-ok"><h2 class="titulo">XML <em>válido</em></h2><p class="muted">${esc(nome)} · ${r.subtipo === "nota" ? "documento completo" : "grupo de tributação"} · estrutura conforme o XSD oficial.</p></div>`
         : r.erros.map((e) => `<div class="caixa-erro">
             <p class="erro-local">Erro${e.linha ? ` na linha ${e.linha}, coluna ${e.coluna}` : ""}</p>
-            <p style="font-size:17px;line-height:26px;margin:0 0 var(--space-3)"><b>${esc(e.mensagem)}</b></p>
+            <p style="font-size:17px;line-height:26px;margin:0 0 var(--s-3)"><b>${esc(e.mensagem)}</b></p>
             ${trecho(xml, e.linha, e.coluna)}
             <p class="muted">${esc(nome)}. A validação oficial para no primeiro erro: corrija e valide de novo.</p>
             <details><summary>Mensagem técnica original</summary><pre class="codigo">${esc(e.original)}</pre></details></div>`).join("");
@@ -109,7 +109,7 @@
         ${abas("danfse")}
         <form id="d-form" class="card" novalidate>
           ${areaArquivo("d", "Arraste o XML da NFS-e")}
-          <div class="grade" style="margin-top:var(--space-6)">
+          <div class="grade" style="margin-top:var(--s-6)">
             <label class="campo c6"><span>Situação da nota</span><select id="d-sit"><option value="0">Válida</option><option value="1">Substituída</option><option value="2">Cancelada</option></select></label>
             <label class="check c6" style="align-self:end"><input type="checkbox" id="d-canhoto" checked> Incluir canhoto (recibo)</label>
           </div>

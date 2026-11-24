@@ -29,21 +29,38 @@
     location.hash = q.length >= 2 ? `#/busca/${encodeURIComponent(q)}` : "#/consulta";
   });
 
-  // Gravura da landing: rosetas e microtexto; a roseta grande se grava uma vez ao abrir.
-  RTC.gravar($("#lp"));
-  $(".lp-roseta")?.classList.add("gravando");
-
-  RTC.iniciarTema();
   window.addEventListener("hashchange", RTC.rotear);
   RTC.rotear();
+  RTC.animar($("#lp"));
+
+  // Fio de progresso no topo da página.
+  const prog = $("#progresso");
+  const rolar = () => { const h = document.documentElement; prog.style.transform = `scaleX(${h.scrollTop / ((h.scrollHeight - h.clientHeight) || 1)})`; };
+  addEventListener("scroll", rolar, { passive: true }); rolar();
+
+  // Cursor e magnetismo do botão primário: só ponteiro fino e sem "reduzir movimento".
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches && matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    const c = $("#cursor"); let x = 0, y = 0, cx = 0, cy = 0;
+    addEventListener("mousemove", (e) => { x = e.clientX; y = e.clientY; c.style.opacity = 1; });
+    const laco = () => { cx += (x - cx) * 0.18; cy += (y - cy) * 0.18; c.style.transform = `translate(${cx}px,${cy}px)`; requestAnimationFrame(laco); };
+    laco();
+    document.addEventListener("mouseover", (e) => c.classList.toggle("grande", !!e.target.closest("a, button, summary, select, input, label")));
+    document.addEventListener("mousemove", (e) => {
+      const b = e.target.closest(".mag");
+      document.querySelectorAll(".mag").forEach((m) => { if (m !== b) { m.style.setProperty("--bx", "0px"); m.style.setProperty("--by", "0px"); } });
+      if (!b) return;
+      const r = b.getBoundingClientRect();
+      b.style.setProperty("--bx", `${(e.clientX - r.left - r.width / 2) * 0.3}px`);
+      b.style.setProperty("--by", `${(e.clientY - r.top - r.height / 2) * 0.3}px`);
+    });
+  }
 
   api("/api/versao").then((v) => {
     const c = v.calculadora || {}, s = v.simplesNacional || {};
-    const txt = `Regime regular ${c.versaoApp || "?"} · Simples Nacional ${s.versaoApp || "?"} · base ${c.versaoDb || "?"} de ${dataBR(c.dataVersaoDb)}`;
-    $("#versoes").textContent = `${txt} · Consulta RTC ${v.projeto}`;
-    $("#lp-versoes").textContent = txt;
+    $("#versoes").textContent = `Regime regular ${c.versaoApp || "?"} · Simples Nacional ${s.versaoApp || "?"} · base ${c.versaoDb || "?"} de ${dataBR(c.dataVersaoDb)} · Consulta RTC ${v.projeto}`;
+    $("#lp-base").textContent = `${c.versaoDb || "?"} · ${dataBR(c.dataVersaoDb)}`;
   }).catch(() => {
     $("#versoes").textContent = "Serviços oficiais indisponíveis no momento.";
-    $("#lp-versoes").textContent = "Não foi possível consultar as versões agora.";
+    $("#lp-base").textContent = "indisponível agora";
   });
 })();

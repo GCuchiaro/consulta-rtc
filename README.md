@@ -57,10 +57,9 @@ navegador / cliente MCP ─► gateway (FastAPI + site estático)
   classificações candidatas de cada código (confirmadas no endpoint oficial `ncm-aplicavel`/
   `nbs-aplicavel`) e organiza as respostas. Limite de 120 requisições/minuto por IP. Nada que o usuário
   envia é guardado.
-- `web/` é o site (HTML/CSS/JS sem build), no visual "Impressão de segurança": papel off-white,
-  gravura em verde inglês (rosetas guilhochê geradas a partir de cada código, em `js/gravura.js`),
-  Bodoni Moda no valor de face e nos títulos, Libre Franklin no texto, Courier Prime nos códigos.
-  Tema claro padrão, escuro opcional. O sistema está descrito em `DESIGN.md`; o produto, em `PRODUCT.md`.
+- `web/` é o site (HTML/CSS/JS sem build), sobre o design system Giovanni Cuchiaro: `tokens.css`
+  copiado do sistema, Inter Tight, Instrument Serif itálico e IBM Plex Mono, névoa com bandas escuras,
+  verde inglês como único destaque. Detalhes em `DESIGN.md`; o produto, em `PRODUCT.md`.
 
 ### Inconsistência conhecida nos dados oficiais
 

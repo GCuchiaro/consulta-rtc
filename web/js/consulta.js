@@ -38,18 +38,18 @@
   const forca = (c) => Math.max(...Object.values(c.reducao || {}).map(Number).filter((n) => !isNaN(n)), 0);
   const melhorClasse = (classes) => [...classes].sort((a, b) => forca(b) - forca(a))[0];
 
-  // Valor de face do certificado: quanto da alíquota cheia se paga no caso mais favorável.
-  const pctFace = (n) => new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(n);
-  function face(classes, codigo) {
-    let valor = `100<small>%</small>`, legenda = "da alíquota cheia";
+  // O número é protagonista: quanto da alíquota cheia se paga no caso mais favorável (conta do zero ao entrar).
+  function face(classes) {
+    let valor = 100, legenda = "da alíquota cheia de CBS e IBS";
     if (classes.length) {
       const f = forca(melhorClasse(classes));
-      valor = f > 0 ? `${pctFace(100 - f)}<small>%</small>` : "";
-      legenda = f > 0 ? "da alíquota cheia, se enquadrado" : "ver as condições abaixo";
+      valor = f > 0 ? Math.round((100 - f) * 100) / 100 : null;
+      legenda = f > 0 ? "da alíquota cheia de CBS e IBS, se a operação se enquadrar" : "veja as condições de cada classificação abaixo";
     }
-    return `<div class="face"><span class="roseta gravando" data-roseta="${esc(codigo)}" data-linhas="40"></span>
-      <div class="face-miolo">${valor ? `<b class="face-valor">${valor}</b>` : `<b class="face-valor texto">Regime<br>específico</b>`}
-      <span class="face-legenda">${legenda}</span></div></div>`;
+    const inteiro = valor !== null && Number.isInteger(valor);
+    return `<div class="face">${valor === null ? `<b class="face-valor texto">Regime específico</b>`
+      : `<b class="face-valor"${inteiro ? ` data-to="${valor}" data-suf="%"` : ""}>${String(valor).replace(".", ",")}<sup>%</sup></b>`}
+      <span class="face-legenda">${legenda}</span></div>`;
   }
 
   function veredito(classes, is, data) {
@@ -96,6 +96,10 @@
     },
     entrar([rota, arg], el) {
       $("#c-exemplos", el).hidden = !!arg;
+      // Um botão primário por tela: na ficha, o primário é o do simulador.
+      const naFicha = !!arg && (rota === "ncm" || rota === "nbs");
+      $("#c-form .btn", el).classList.toggle("btn-primario", !naFicha);
+      $("#c-form .btn", el).classList.toggle("btn-secundario", naFicha);
       // Com resultado na tela, o cabeçalho grande sai e a resposta sobe.
       el.classList.toggle("compacta", !!arg);
       el.classList.toggle("em-ficha", !!arg && (rota === "ncm" || rota === "nbs"));
@@ -165,14 +169,13 @@
       const melhor = classes.length ? melhorClasse(classes) : null;
       const ordenadas = melhor ? [melhor, ...classes.filter((c) => c !== melhor)] : [];
       alvo.innerHTML = `
-        <p style="margin-top:var(--space-6)">${voltar}</p>
-        <article class="ficha-topo moldura certificado"><div class="miolo">
-          <p class="micro" data-micro="CONSULTA RTC · ${tipo.toUpperCase()} ${esc(r.codigoFormatado)} · CALCULADORA OFICIAL DA RECEITA FEDERAL · LC 214/2025"></p>
+        <p style="margin-top:var(--s-8)"><a class="btn btn-fantasma" href="${qAnterior ? `#/busca/${encodeURIComponent(qAnterior)}` : "#/consulta"}">${qAnterior ? `${RTC.seta("esq")} Resultados para “${esc(qAnterior)}”` : `${RTC.seta("esq")} Nova consulta`}</a></p>
+        <article class="card ficha-topo">
           <div class="cert-cabeca"><span class="serie">${tipo.toUpperCase()} ${esc(r.codigoFormatado)}</span><span class="ref">Referência ${dataBR(r.data)}</span></div>
           ${(r.caminho || []).length ? `<p class="ficha-trilha">${esc(r.caminho.join(" › "))} ›</p>` : ""}
           <h2 class="titulo">${esc(r.descricao || "Sem descrição na tabela oficial")}</h2>
           <div class="cert-corpo">
-          ${face(classes, r.codigo)}
+          ${face(classes)}
           <div>
           ${veredito(classes, is, r.data || data)}
           <div class="tags">
@@ -183,14 +186,14 @@
           <div id="c-futuro"></div>
           <div class="acoes esq">
             ${classes.length
-              ? `<a class="btn btn-primario" href="#/simulador/${tipo}/${esc(r.codigo)}/${esc(melhorClasse(classes).cClassTrib)}">Simular com o benefício</a>
+              ? `<a class="btn btn-primario mag" href="#/simulador/${tipo}/${esc(r.codigo)}/${esc(melhorClasse(classes).cClassTrib)}">Simular com o benefício ${RTC.seta()}</a>
                  <a class="btn btn-secundario" href="#/simulador/${tipo}/${esc(r.codigo)}/${esc(r.regraGeral)}">Simular a regra geral</a>`
-              : `<a class="btn btn-primario" href="#/simulador/${tipo}/${esc(r.codigo)}">Simular no regime regular</a>`}
+              : `<a class="btn btn-primario mag" href="#/simulador/${tipo}/${esc(r.codigo)}">Simular no regime regular ${RTC.seta()}</a>`}
             <a class="btn btn-secundario" href="#/simples/${tipo}/${esc(r.codigo)}">Simular no Simples Nacional</a>
           </div>
           <p class="nota">Regime regular é a empresa do lucro real ou presumido; Simples Nacional, a optante pelo Simples.</p>
           </div></div>
-        </div></article>
+        </article>
         <section class="card">
           <div class="card-titulo"><h2 class="secao">Benefícios deste ${nome}</h2><span class="eyebrow">${plural(classes.length, "classificação", "classificações")}</span></div>
           ${classes.length
@@ -198,16 +201,16 @@
                ${ordenadas.map((c, n) => cardClasse(c, sim, ordenadas.length > 1 ? (n ? "fantasma" : "principal") : "")).join("")}`
             : `<p class="muted">Nenhuma redução ou regime específico ligado a este código pelos anexos da LC 214/2025.</p>`}
           <p class="nota">Fora dessas hipóteses vale a tributação integral: CST 000, cClassTrib ${esc(r.regraGeral)}.</p>
-          ${outras.length ? `<details style="margin-top:var(--space-4)"><summary>Outras ${outras.length} classificações aceitas, sem anexo</summary>
+          ${outras.length ? `<details style="margin-top:var(--s-4)"><summary>Outras ${outras.length} classificações aceitas, sem anexo</summary>
             <p class="muted">${is.incide ? "Produtos com Imposto Seletivo só podem usar as classificações desta lista." : "Situações específicas em que o código também pode ser usado."}</p>
             ${outras.map((c) => cardClasse(c, sim)).join("")}</details>` : ""}
         </section>
         ${tipo === "nbs" ? `<section class="card" id="c-nfse"><h2 class="secao">Na NFS-e</h2><p class="carregando">Consultando as regras da NFS-e</p></section>` : ""}`;
-      RTC.gravar(alvo);
+      RTC.animar(alvo);
       if (tipo === "nbs") nfse($("#c-nfse", el), r.codigo, data);
       if (data < INICIO_2027) mudancaEm2027(el, alvo, vez, tipo, r);
     } catch (e) {
-      alvo.innerHTML = `<p style="margin-top:var(--space-6)"><a href="#/consulta">${RTC.seta("esq")} Consulta</a></p><p class="erro">${esc(e.message)}</p>`;
+      alvo.innerHTML = `<p style="margin-top:var(--s-6)"><a href="#/consulta">${RTC.seta("esq")} Consulta</a></p><p class="erro">${esc(e.message)}</p>`;
     }
   }
 
@@ -245,7 +248,7 @@
         ${situacoes.map((s) => `<tr><td class="cod">${esc(s.codigoSituacaoTributaria)}</td><td>${esc(s.descricaoSituacaoTributaria)}</td>
           <td class="cod">${esc(s.codigoClassificacaoTributaria)}</td><td>${esc(s.descricaoClassificacaoTributaria)}</td></tr>`).join("")}
         </tbody></table></div>` : `<p class="muted">A tabela da NFS-e não traz classificação específica para este NBS.</p>`}
-      <h3 style="margin-top:var(--space-8)">Indicadores de operação (cIndOp) e local de incidência</h3>
+      <h3 style="margin-top:var(--s-8)">Indicadores de operação (cIndOp) e local de incidência</h3>
       ${indicadores.length ? `<div class="tabela-wrap"><table><thead><tr><th>cIndOp</th><th>Operação</th><th>Local de incidência</th><th>Local de fornecimento</th></tr></thead><tbody>
         ${indicadores.map((i) => `<tr><td class="cod">${esc(i.cIndOp)}</td><td>${esc(i.tipoOperacao)}${i.adquirenteExterior ? ` <span class="tag info"><i></i>adquirente no exterior</span>` : ""}</td>
           <td>${esc(i.localIncidencia)}</td><td class="muted">${esc(i.localFornecimento)}</td></tr>`).join("")}

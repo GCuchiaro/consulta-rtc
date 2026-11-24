@@ -40,7 +40,7 @@ Roda as próprias calculadoras oficiais da Receita (regime regular e Simples Nac
 ## Brand Commitments
 
 - Nome: **Consulta RTC**, assinado por **Giovanni Cuchiaro** (monograma GC em `web/marca/`).
-- **Cores principais obrigatórias** (decisão do usuário, 2026-11-24): verde inglês (#273D31, com o tom claro #67A282 para destaque no escuro), grafite (#15171A) e off-white (#ECEAE6). Todo o resto (tipografia, composição, componentes, tema padrão) pode mudar no redesenho.
+- **Design system obrigatório** (decisão do usuário, 2026-11-24): o site segue integralmente o design system Giovanni Cuchiaro (BRAND.md, tokens, guia de referência). Nada de mundo visual próprio.
 - Voz: português do Brasil, direta, sem jargão desnecessário, sem promessas comerciais.
 
 ## Evidence on Hand

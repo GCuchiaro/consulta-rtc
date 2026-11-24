@@ -82,7 +82,7 @@ window.RTC = (() => {
   }
 
   // Seta desenhada no traço da gravura (sem glifos de texto como ícone).
-  const seta = (dir) => `<svg class="seta${dir === "esq" ? " esq" : ""}" viewBox="0 0 18 10" aria-hidden="true" focusable="false"><path d="M0 5h16M12 1l4 4-4 4"/></svg>`;
+  const seta = (dir) => `<span class="ar" aria-hidden="true">${dir === "esq" ? "←" : "→"}</span>`;
 
   // ---- formulários ----
   // Erro ligado a um campo: lançado pelo leitor do formulário e mostrado junto do campo.
@@ -123,20 +123,30 @@ window.RTC = (() => {
 
   const jsonBruto = (titulo, dados) => `<details><summary>${titulo}</summary><pre class="codigo">${esc(JSON.stringify(dados, null, 2))}</pre></details>`;
 
-  // ---- tema ----
-  // Papel claro é o padrão (uso de dia, no escritório); o escuro fica a um clique e é lembrado.
-  function aplicarTema(tema) {
-    if (tema === "escuro") document.documentElement.dataset.tema = "escuro"; else delete document.documentElement.dataset.tema;
-    $("#tema").textContent = tema === "escuro" ? "Tema claro" : "Tema escuro";
-    $("#monograma").src = `marca/monograma-${tema === "escuro" ? "escuro" : "claro"}.svg`;
+  // ---- movimento (design system: revelação no scroll, contagem, régua que fecha) ----
+  // Fundo claro e escuro vêm por banda (.dark), não por seletor de tema.
+  const reduzir = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function contar(el) {
+    const ate = Number(el.dataset.to), suf = el.dataset.suf || "";
+    const escrever = (v) => { el.innerHTML = `${v}${suf ? `<sup>${suf}</sup>` : ""}`; };
+    if (reduzir || !ate) { escrever(ate); return; }
+    const t0 = performance.now();
+    const passo = (t) => { const p = Math.min(1, (t - t0) / 1600); escrever(Math.round(ate * (1 - Math.pow(1 - p, 3)))); if (p < 1) requestAnimationFrame(passo); };
+    requestAnimationFrame(passo);
   }
-  function iniciarTema() {
-    aplicarTema(ler("rtc-tema") === "escuro" ? "escuro" : "claro");
-    $("#tema").addEventListener("click", () => {
-      const novo = document.documentElement.dataset.tema === "escuro" ? "claro" : "escuro";
-      guardar("rtc-tema", novo); aplicarTema(novo);
+  const observador = "IntersectionObserver" in window ? new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add("in");
+    e.target.querySelectorAll("[data-to]").forEach(contar);
+    observador.unobserve(e.target);
+  }), { threshold: 0.18 }) : null;
+  // Observa os blocos animáveis dentro de `raiz` (chamado de novo a cada tela renderizada).
+  function animar(raiz = document) {
+    raiz.querySelectorAll(".rv:not(.in), .stat:not(.in), .face:not(.in), .kpis:not(.in)").forEach((el) => {
+      if (observador && !reduzir) observador.observe(el); else el.classList.add("in");
     });
   }
+  function iniciarTema() {}
 
   // ---- telas ----
   // Cada tela: { nav, montar(el), entrar(args, el) }. O elemento é criado uma vez e preservado.
@@ -166,5 +176,5 @@ window.RTC = (() => {
 
   return { $, $$, esc, reais, pct, nf, hoje, dataBR, guardar, ler, api, postJSON, baixar, cabeca, subNav,
     tabelaDeObjetos, chaveValor, jsonBruto, iniciarTema, registrar, mostrar,
-    seta, falha, limparErros, mostrarErro, vigiarResultado, resultadoPronto };
+    animar, seta, falha, limparErros, mostrarErro, vigiarResultado, resultadoPronto };
 })();

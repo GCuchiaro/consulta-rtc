@@ -3,21 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Consulta RTC</title>
+  <title>Consulta RTC · Giovanni Cuchiaro</title>
   <meta name="description" content="Tributação de produtos e serviços na Reforma Tributária (CBS, IBS e Imposto Seletivo), simuladores do regime regular e do Simples Nacional, validação de XML, DANFSe e tabelas oficiais, com as ferramentas de código aberto da Receita Federal.">
   <link rel="icon" href="marca/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..700&family=Libre+Franklin:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap">
-  <script>try { if (localStorage.getItem("rtc-tema") === "escuro") document.documentElement.dataset.tema = "escuro"; } catch (e) {}</script>
-  <link rel="stylesheet" href="estilo.css?v=2.0.0">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="tokens.css?v=3.0.0">
+  <link rel="stylesheet" href="estilo.css?v=3.0.0">
 </head>
 <body>
+  <div class="progresso" id="progresso" aria-hidden="true"></div>
+
   <header class="topo">
     <div class="wrap">
       <a class="marca" href="#/" aria-label="Consulta RTC, início">
-        <img id="monograma" src="marca/monograma-claro.svg" alt="" width="32" height="32">
-        <span class="marca-nome">Consulta <em>RTC</em></span>
+        <img src="marca/monograma-claro.svg" alt="" width="36" height="36">
+        <span><b>Consulta RTC</b><small>Giovanni <em>Cuchiaro</em></small></span>
       </a>
       <nav class="nav" aria-label="Seções">
         <a href="#/consulta" data-nav="consulta">Consulta</a>
@@ -27,85 +29,85 @@
         <a href="#/tabelas" data-nav="tabelas">Tabelas</a>
         <a href="#/sobre" data-nav="sobre">Sobre e API</a>
       </nav>
-      <button class="btn btn-fantasma btn-p tema" id="tema" type="button">Tema escuro</button>
-      <a class="btn btn-primario btn-p so-lp" href="#/consulta">Acessar a calculadora</a>
+      <a class="btn btn-secundario btn-p so-lp" href="#/consulta">Abrir a consulta <span class="ar" aria-hidden="true">→</span></a>
     </div>
   </header>
 
   <!-- Página de entrada (rota #/ ou sem hash). Fica no HTML para ser lida sem JavaScript e por buscadores. -->
   <div id="lp" class="lp">
-    <section class="lp-folha">
+    <section class="banda dark lp-capa">
+      <div class="orbita" aria-hidden="true"></div>
       <div class="wrap">
-        <div class="moldura lp-doc">
-          <div class="miolo">
-            <p class="micro" data-micro="CONSULTA RTC · CBS · IBS · IMPOSTO SELETIVO · LC 214/2025 · CALCULADORA OFICIAL DA RECEITA FEDERAL"></p>
-            <div class="lp-grade">
-              <div class="lp-texto">
-                <h1 class="lp-titulo">Como cada produto e serviço é tributado na Reforma</h1>
-                <p class="lp-sub">CBS, IBS e Imposto Seletivo pela calculadora oficial da Receita Federal, com o item da LC 214/2025 que fundamenta cada benefício. Grátis e sem cadastro.</p>
-                <form class="lp-busca" id="lp-busca" role="search" autocomplete="off">
-                  <label class="lp-busca-rotulo" for="lp-q">Produto, serviço ou código NCM/NBS</label>
-                  <div class="lp-busca-campo">
-                    <input id="lp-q" type="search" placeholder="arroz, cerveja, serviços de contabilidade">
-                    <button class="btn btn-primario" type="submit">Buscar</button>
-                  </div>
-                  <p class="exemplos"><span>Experimente</span><a href="#/busca/arroz">arroz</a><a href="#/busca/cerveja">cerveja</a><a href="#/busca/medicamentos">medicamentos</a><a href="#/busca/servi%C3%A7os%20de%20contabilidade">serviços de contabilidade</a><a href="#/busca/2203.00.00">2203.00.00</a></p>
-                </form>
-              </div>
-
-              <div class="lp-selos">
-                <div class="roseta lp-roseta" data-roseta="Consulta RTC" data-linhas="64"></div>
-                <p class="lp-selos-titulo">Exemplos reais da calculadora oficial: quanto da alíquota cheia cada um paga em 2026</p>
-                <ul class="tira" aria-label="Exemplos reais da calculadora oficial">
-                  <li><a class="selo" href="#/ncm/10063021">
-                    <span class="selo-valor"><span class="roseta" data-roseta="10063021" data-faixas="1" data-linhas="22"></span><b>0</b><small>%</small></span>
-                    <span class="selo-texto"><span class="serie">NCM 1006.30.21</span><b>Arroz polido</b><span>Alíquota zero · 200003 · LC 214, Anexo I, item 1</span></span></a></li>
-                  <li><a class="selo" href="#/nbs/113022100">
-                    <span class="selo-valor"><span class="roseta" data-roseta="113022100" data-faixas="1" data-linhas="22"></span><b>70</b><small>%</small></span>
-                    <span class="selo-texto"><span class="serie">NBS 1.1302.21.00</span><b>Serviços de contabilidade</b><span>Redução de 30% · 200052 · tabela da NFS-e</span></span></a></li>
-                  <li><a class="selo" href="#/ncm/22030000">
-                    <span class="selo-valor"><span class="roseta" data-roseta="22030000" data-faixas="1" data-linhas="22"></span><b>100</b><small>%</small></span>
-                    <span class="selo-texto"><span class="serie">NCM 2203.00.00</span><b>Cerveja de malte</b><span>Regra geral · 000001 · Imposto Seletivo a partir de 2027</span></span></a></li>
-                </ul>
-              </div>
-            </div>
-            <p class="micro" data-micro="AS REGRAS SÃO DA RECEITA FEDERAL · CÓDIGO OFICIAL SEM ALTERAÇÕES · ATUALIZADO A CADA VERSÃO NOVA"></p>
+        <p class="label rv">Consulta RTC · CBS, IBS e Imposto Seletivo · LC 214/2025</p>
+        <h1 class="lp-titulo rv">
+          <span class="mask"><span>Como cada produto</span></span>
+          <span class="mask"><span style="--i:1">é tributado</span></span>
+          <span class="mask"><span style="--i:2"><span class="serif">na Reforma.</span></span></span>
+        </h1>
+        <p class="lede rv" style="--i:3">Busque pelo nome ou pelo código NCM/NBS. A resposta sai da calculadora oficial da Receita Federal, com o item da lei que fundamenta cada benefício.</p>
+        <form class="lp-busca rv" style="--i:4" id="lp-busca" role="search" autocomplete="off">
+          <label class="lp-busca-rotulo" for="lp-q">Produto, serviço ou código</label>
+          <div class="lp-busca-campo">
+            <input id="lp-q" type="search" placeholder="arroz, cerveja, serviços de contabilidade">
+            <button class="btn btn-primario mag" type="submit">Consultar <span class="ar" aria-hidden="true">→</span></button>
           </div>
+          <p class="exemplos"><span>Experimente</span><a href="#/busca/arroz">arroz</a><a href="#/busca/cerveja">cerveja</a><a href="#/busca/medicamentos">medicamentos</a><a href="#/busca/servi%C3%A7os%20de%20contabilidade">serviços de contabilidade</a></p>
+        </form>
+        <div class="lp-meta rv" style="--i:5">
+          <div><span class="label">Fonte</span><b>Calculadora oficial da Receita</b></div>
+          <div><span class="label">Base em uso</span><b id="lp-base">consultando…</b></div>
+          <div><span class="label">Atualização</span><b>A cada 6 horas</b></div>
+          <div><span class="label">Custo</span><b>Grátis, sem cadastro</b></div>
         </div>
       </div>
     </section>
 
-    <section class="wrap lp-secao" id="lp-funcoes">
-      <h2 class="lp-h2">Seis ferramentas sobre a mesma base oficial</h2>
-      <ul class="lp-funcoes">
-        <li><a href="#/consulta"><b>Consulta</b>
-          <span>Como o produto ou serviço é tributado. A ficha mostra as reduções e isenções com o item da LC 214/2025 que as fundamenta, o Imposto Seletivo e, para serviços, as regras da NFS-e.</span><i><svg class="seta" viewBox="0 0 18 10" aria-hidden="true" focusable="false"><path d="M0 5h16M12 1l4 4-4 4"/></svg></i></a></li>
-        <li><a href="#/simulador"><b>Simulador do regime regular</b>
-          <span>CBS, IBS e IS de até 30 itens, com UF, município e classificação. Devolve a memória de cálculo oficial e o XML dos grupos de tributação para NF-e, NFC-e, NFS-e, CT-e, BP-e e NF3-e.</span><i><svg class="seta" viewBox="0 0 18 10" aria-hidden="true" focusable="false"><path d="M0 5h16M12 1l4 4-4 4"/></svg></i></a></li>
-        <li><a href="#/simples"><b>Simulador do Simples Nacional</b>
-          <span>A nota de quem está no Simples: CBS e IBS por atividade e anexo, com fator "r", sublimite e as alíquotas efetivas do PGDAS.</span><i><svg class="seta" viewBox="0 0 18 10" aria-hidden="true" focusable="false"><path d="M0 5h16M12 1l4 4-4 4"/></svg></i></a></li>
-        <li><a href="#/xml"><b>Documentos</b>
-          <span>Confere o XML contra os schemas oficiais e aponta a linha do erro, explicado em português. Gera o PDF do DANFSe a partir do XML da NFS-e.</span><i><svg class="seta" viewBox="0 0 18 10" aria-hidden="true" focusable="false"><path d="M0 5h16M12 1l4 4-4 4"/></svg></i></a></li>
-        <li><a href="#/ferramentas"><b>Bases e cálculos</b>
-          <span>Base unificada de NF-e e NFS-e, bases de CBS/IBS e de IS de mercadorias, pedágio e validação do indicador de operação.</span><i><svg class="seta" viewBox="0 0 18 10" aria-hidden="true" focusable="false"><path d="M0 5h16M12 1l4 4-4 4"/></svg></i></a></li>
-        <li><a href="#/tabelas"><b>Tabelas</b>
-          <span>Classificações tributárias, CST, fundamentação legal, alíquotas de referência, redutores, regras da NFS-e e atividades do Simples, com filtro e CSV.</span><i><svg class="seta" viewBox="0 0 18 10" aria-hidden="true" focusable="false"><path d="M0 5h16M12 1l4 4-4 4"/></svg></i></a></li>
-      </ul>
+    <section class="banda">
+      <div class="wrap">
+        <header class="sh">
+          <div class="rv"><span class="n">01 · Exemplos reais</span><h2>Três códigos, três <span class="serif">respostas.</span></h2></div>
+          <p class="lede rv" style="--i:1">Quanto da alíquota cheia de CBS e IBS cada um paga em 2026, segundo a calculadora oficial. Clique para abrir a ficha completa.</p>
+        </header>
+        <div class="stats">
+          <a class="stat rv" href="#/ncm/10063021"><span class="n" data-to="0" data-suf="%">0<sup>%</sup></span><h3>Arroz polido</h3><p>Alíquota zero pelo Anexo I da LC 214, item 1.</p><span class="cod">NCM 1006.30.21 · 200003</span></a>
+          <a class="stat rv" style="--i:1" href="#/nbs/113022100"><span class="n" data-to="70" data-suf="%">70<sup>%</sup></span><h3>Serviços de contabilidade</h3><p>Redução de 30% para profissões intelectuais, pela tabela da NFS-e.</p><span class="cod">NBS 1.1302.21.00 · 200052</span></a>
+          <a class="stat rv" style="--i:2" href="#/ncm/22030000"><span class="n" data-to="100" data-suf="%">100<sup>%</sup></span><h3>Cerveja de malte</h3><p>Regra geral, e Imposto Seletivo a partir de 2027.</p><span class="cod">NCM 2203.00.00 · 000001</span></a>
+        </div>
+      </div>
     </section>
 
-    <section class="wrap lp-secao lp-origem">
-      <div>
-        <h2 class="lp-h2">As regras são da Receita, não nossas</h2>
-        <p class="lead">O site não refaz nenhum cálculo. Cada resultado sai das ferramentas que a própria Receita Federal publicou como código aberto. Quando sai uma versão nova, um robô monta o site com ela, testa com dados reais e publica sozinho; se o teste falhar, a versão anterior continua no ar.</p>
+    <section class="banda alt" id="lp-funcoes">
+      <div class="wrap">
+        <header class="sh">
+          <div class="rv"><span class="n">02 · Ferramentas</span><h2>Seis ferramentas, uma base <span class="serif">oficial.</span></h2></div>
+          <p class="lede rv" style="--i:1">Da consulta do código ao XML da nota: tudo roda nas ferramentas que a Receita publicou como código aberto.</p>
+        </header>
+        <div class="cards">
+          <a class="pc rv" href="#/consulta"><div class="shot"><span>NCM</span></div><div class="bd"><span class="label">Consulta</span><h3>Como o código é tributado</h3><p>Reduções e isenções com o item da LC 214 que as fundamenta, Imposto Seletivo e regras da NFS-e.</p></div></a>
+          <a class="pc rv" style="--i:1" href="#/simulador"><div class="shot"><span>CBS</span></div><div class="bd"><span class="label">Regime regular</span><h3>Simulador da operação</h3><p>Até 30 itens, com memória de cálculo oficial e o XML dos grupos de tributação.</p></div></a>
+          <a class="pc rv" style="--i:2" href="#/simples"><div class="shot"><span>SN</span></div><div class="bd"><span class="label">Simples Nacional</span><h3>A nota de quem é do Simples</h3><p>CBS e IBS por atividade e anexo, com fator "r", sublimite e alíquotas efetivas do PGDAS.</p></div></a>
+          <a class="pc rv" href="#/xml"><div class="shot"><span>XML</span></div><div class="bd"><span class="label">Documentos</span><h3>Validação e DANFSe</h3><p>Confere o XML contra os schemas oficiais e gera o PDF do DANFSe a partir da NFS-e.</p></div></a>
+          <a class="pc rv" style="--i:1" href="#/ferramentas"><div class="shot"><span>BC</span></div><div class="bd"><span class="label">Bases e cálculos</span><h3>Bases de cálculo e pedágio</h3><p>Base unificada de NF-e e NFS-e, bases de CBS/IBS e de IS de mercadorias.</p></div></a>
+          <a class="pc rv" style="--i:2" href="#/tabelas"><div class="shot"><span>CSV</span></div><div class="bd"><span class="label">Tabelas</span><h3>As tabelas em dados abertos</h3><p>Classificações, CST, fundamentação legal, alíquotas e redutores, com filtro e CSV.</p></div></a>
+        </div>
       </div>
-      <div>
-        <dl class="lp-fatos">
-          <div><dt>Código oficial alterado</dt><dd class="num">0 linhas</dd></div>
-          <div><dt>Busca por versão nova</dt><dd class="num">a cada 6 h</dd></div>
-          <div><dt>Custo</dt><dd>grátis, sem cadastro</dd></div>
-          <div><dt>Em uso agora</dt><dd class="mono" id="lp-versoes">consultando…</dd></div>
-        </dl>
-        <ul class="lp-repos">
+    </section>
+
+    <div class="faixa" aria-hidden="true"><div class="faixa-trilho"><span>CBS</span><span>IBS</span><span>Imposto Seletivo</span><span>NCM e NBS</span><span>Simples Nacional</span><span>NFS-e</span><span>CBS</span><span>IBS</span><span>Imposto Seletivo</span><span>NCM e NBS</span><span>Simples Nacional</span><span>NFS-e</span></div></div>
+
+    <section class="banda">
+      <div class="wrap">
+        <header class="sh">
+          <div class="rv"><span class="n">03 · De onde vêm os números</span><h2>As regras são da Receita, não <span class="serif">nossas.</span></h2></div>
+          <p class="lede rv" style="--i:1">O site não refaz nenhum cálculo. Quando sai uma versão nova, um robô monta o site com ela, testa com dados reais e publica sozinho. Se o teste falha, a versão anterior continua no ar.</p>
+        </header>
+        <div class="prin">
+          <article class="rv"><span class="k">0</span><h3>Linhas de código oficial alteradas</h3><p>As calculadoras rodam como a Receita publicou, sem nenhuma modificação.</p></article>
+          <article class="rv" style="--i:1"><span class="k">6 h</span><h3>Intervalo entre as buscas por versão nova</h3><p>Cada versão nova passa por 15 verificações antes de entrar no ar.</p></article>
+          <article class="rv"><span class="k">2</span><h3>Calculadoras oficiais, e o gerador de DANFSe</h3><p>Regime regular e Simples Nacional, cada uma com a sua API completa à disposição.</p></article>
+          <article class="rv" style="--i:1"><span class="k">R$ 0</span><h3>Para usar, sem cadastro</h3><p>Nada fica gravado: valores, itens e XMLs passam pelas calculadoras e voltam para você.</p></article>
+        </div>
+        <ul class="lp-repos rv">
           <li><b>Calculadora do regime regular</b><span>Java</span><a href="https://github.com/ReceitaFederal/calculadora-rtc-regime-regular" target="_blank" rel="noopener">ReceitaFederal/calculadora-rtc-regime-regular</a></li>
           <li><b>Calculadora do Simples Nacional</b><span>Java</span><a href="https://github.com/ReceitaFederal/calculadora-rtc-simples-nacional" target="_blank" rel="noopener">ReceitaFederal/calculadora-rtc-simples-nacional</a></li>
           <li><b>Gerador de DANFSe</b><span>Go</span><a href="https://github.com/ReceitaFederal/calculadora-rtc-gerador-danfse" target="_blank" rel="noopener">ReceitaFederal/calculadora-rtc-gerador-danfse</a></li>
@@ -113,18 +115,16 @@
       </div>
     </section>
 
-    <section class="wrap lp-secao">
-      <h2 class="lp-h2">API aberta e conector para o Claude</h2>
-      <div class="lp-dev">
-        <div>
-          <p>Tudo o que o site faz está disponível por HTTP, com documentação interativa em <a href="/api/docs">/api/docs</a>. A API oficial completa das duas calculadoras também fica acessível, com o OpenAPI de cada uma.</p>
-          <p>No Claude, adicione um conector personalizado com o endereço <code>/mcp/</code> e pergunte em português: "qual a tributação do leite UHT em 2027?".</p>
-          <p><a href="#/sobre">Ver endpoints e ferramentas do MCP <svg class="seta" viewBox="0 0 18 10" aria-hidden="true" focusable="false"><path d="M0 5h16M12 1l4 4-4 4"/></svg></a></p>
+    <section class="banda alt">
+      <div class="wrap lp-dev">
+        <div class="rv">
+          <span class="label">04 · Para quem desenvolve</span>
+          <h2 class="secao" style="margin-top:var(--s-3)">API aberta e conector para o <span class="serif">Claude.</span></h2>
+          <p>Tudo o que o site faz está disponível por HTTP, com documentação interativa em <a href="/api/docs">/api/docs</a>. A API oficial das duas calculadoras também fica acessível.</p>
+          <p>No Claude, adicione um conector com o endereço <code>/mcp/</code> e pergunte em português: "qual a tributação do leite UHT em 2027?".</p>
+          <div class="acoes esq"><a class="btn btn-secundario" href="#/sobre">Ver endpoints e MCP <span class="ar" aria-hidden="true">→</span></a></div>
         </div>
-        <div class="moldura lp-canhoto"><div class="miolo">
-          <p class="micro" data-micro="API ABERTA · CONSULTA RTC · CALCULADORA OFICIAL DA RECEITA FEDERAL"></p>
-          <span class="serie">NCM 1006.30.21</span>
-          <pre class="codigo lp-codigo">curl https://rtc.giovannicuchiaro.com/api/produto/10063021
+        <pre class="codigo lp-codigo rv" style="--i:1">curl https://rtc.giovannicuchiaro.com/api/produto/10063021
 
 { "codigo": "10063021",
   "descricao": "Polido ou brunido",
@@ -133,55 +133,61 @@
       "tratamento": "Alíquota zero",
       "descricao": "Vendas de produtos destinados
                     à alimentação humana (Anexo I)" }, … ] }</pre>
-        </div></div>
       </div>
     </section>
 
-    <section class="wrap lp-secao">
-      <h2 class="lp-h2">Antes de usar</h2>
-      <dl class="lp-faq">
-        <div><dt>Preciso pagar ou criar conta?</dt><dd>Não. O site é gratuito, não pede cadastro e o código está aberto no GitHub.</dd></div>
-        <div><dt>Vocês guardam o que eu envio?</dt><dd>Não. Valores, itens e XMLs passam pelas calculadoras e voltam para você. Nada fica gravado.</dd></div>
-        <div><dt>Substitui o meu contador?</dt><dd>Não. É uma ferramenta de consulta e conferência. A decisão de como tributar cada operação continua sendo do profissional responsável.</dd></div>
-        <div><dt>E depois de 2026?</dt><dd>Para 2027 em diante a Receita ainda não publicou as alíquotas definitivas. O simulador pede as alíquotas que você quer testar e marca o resultado como simulado.</dd></div>
-      </dl>
+    <section class="banda">
+      <div class="wrap">
+        <header class="sh">
+          <div class="rv"><span class="n">05 · Perguntas</span><h2>Antes de <span class="serif">usar.</span></h2></div>
+        </header>
+        <div class="exp rv">
+          <details><summary><b>Preciso pagar ou criar conta?</b><span class="pm" aria-hidden="true"></span></summary><div class="corpo">Não. O site é gratuito, não pede cadastro e o código está aberto no GitHub.</div></details>
+          <details><summary><b>Vocês guardam o que eu envio?</b><span class="pm" aria-hidden="true"></span></summary><div class="corpo">Não. Valores, itens e XMLs passam pelas calculadoras e voltam para você. Nada fica gravado.</div></details>
+          <details><summary><b>Substitui o meu contador?</b><span class="pm" aria-hidden="true"></span></summary><div class="corpo">Não. É uma ferramenta de consulta e conferência. A decisão de como tributar cada operação continua sendo do profissional responsável.</div></details>
+          <details><summary><b>E depois de 2026?</b><span class="pm" aria-hidden="true"></span></summary><div class="corpo">Para 2027 em diante a Receita ainda não publicou as alíquotas definitivas. O simulador pede as alíquotas que você quer testar e marca o resultado como simulado.</div></details>
+        </div>
+      </div>
     </section>
 
-    <section class="wrap lp-final">
-      <div class="moldura"><div class="miolo lp-final-miolo">
-        <h2 class="lp-h2">Pronto para conferir um código?</h2>
-        <p class="lead">Arroz, cerveja, consultoria, um código NCM: o resultado sai na hora, com a fundamentação legal.</p>
-        <a class="btn btn-primario" href="#/consulta">Acessar a calculadora</a>
-      </div></div>
+    <section class="banda dark lp-fim">
+      <div class="orbita" aria-hidden="true"></div>
+      <div class="wrap">
+        <h2 class="rv">Pronto para conferir <span class="serif">um código?</span></h2>
+        <div class="rv" style="--i:1">
+          <p class="lede" style="margin:0 0 var(--s-6)">Arroz, cerveja, consultoria, um código NCM: o resultado sai na hora, com a fundamentação legal.</p>
+          <div class="acoes"><a class="btn btn-primario mag" href="#/consulta">Abrir a consulta <span class="ar" aria-hidden="true">→</span></a></div>
+        </div>
+      </div>
     </section>
   </div>
 
   <main class="wrap" id="app"></main>
 
-  <footer class="rodape">
+  <footer class="rodape dark">
     <div class="wrap">
       <div>
-        <p>Projeto independente e de código aberto. Não é um site do governo. Cálculos, tabelas, validações e o DANFSe vêm das
+        <div class="lock"><img src="marca/monograma-escuro.svg" alt="" width="48" height="48"><div><b>Giovanni <em>Cuchiaro</em></b><small>Contabilidade · consultoria · dados</small></div></div>
+        <p style="margin-top:var(--s-6)">Projeto independente e de código aberto. Não é um site do governo. Cálculos, tabelas, validações e o DANFSe vêm das
           <a href="https://github.com/ReceitaFederal" target="_blank" rel="noopener">ferramentas oficiais da Receita Federal</a>
-          (licença MIT), usadas sem modificações e atualizadas automaticamente a cada versão nova. Não substitui a orientação de um contador.</p>
-        <p id="versoes" class="mono"></p>
+          (licença MIT), usadas sem modificações. Não substitui a orientação de um contador.</p>
       </div>
       <div>
-        <div class="assina">Giovanni <em>Cuchiaro</em></div>
-        <div class="linha-gc">Contabilidade · consultoria · dados</div>
-        <p style="margin-top:var(--space-4)"><a href="https://github.com/GCuchiaro/consulta-rtc" target="_blank" rel="noopener">Código-fonte</a> · <a href="#/sobre">API e MCP</a></p>
+        <p><a href="https://github.com/GCuchiaro/consulta-rtc" target="_blank" rel="noopener">Código-fonte</a> · <a href="#/sobre">API e MCP</a></p>
+        <p id="versoes" class="mono" style="font-size:12px"></p>
+        <p class="assinatura">Feito à mão, com ajuda de IA.</p>
       </div>
     </div>
   </footer>
+  <div class="cursor" id="cursor" aria-hidden="true"></div>
 
-  <script src="js/nucleo.js?v=2.0.0"></script>
-  <script src="js/gravura.js?v=2.0.0"></script>
-  <script src="js/consulta.js?v=2.0.0"></script>
-  <script src="js/simulador.js?v=2.0.0"></script>
-  <script src="js/simples.js?v=2.0.0"></script>
-  <script src="js/documentos.js?v=2.0.0"></script>
-  <script src="js/ferramentas.js?v=2.0.0"></script>
-  <script src="js/sobre.js?v=2.0.0"></script>
-  <script src="js/app.js?v=2.0.0"></script>
+  <script src="js/nucleo.js?v=3.0.0"></script>
+  <script src="js/consulta.js?v=3.0.0"></script>
+  <script src="js/simulador.js?v=3.0.0"></script>
+  <script src="js/simples.js?v=3.0.0"></script>
+  <script src="js/documentos.js?v=3.0.0"></script>
+  <script src="js/ferramentas.js?v=3.0.0"></script>
+  <script src="js/sobre.js?v=3.0.0"></script>
+  <script src="js/app.js?v=3.0.0"></script>
 </body>
 </html>

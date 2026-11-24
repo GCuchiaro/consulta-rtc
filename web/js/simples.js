@@ -38,7 +38,7 @@
                 <option value="">Não</option><option value="1">União</option><option value="2">Estado</option><option value="3">Distrito Federal</option><option value="4">Município</option></select></label>
             </div>
           </fieldset>
-          <fieldset style="margin-top:var(--space-6)"><legend>Alíquotas efetivas do período (pontos percentuais)</legend>
+          <fieldset style="margin-top:var(--s-6)"><legend>Alíquotas efetivas do período (pontos percentuais)</legend>
             <div class="grade">
               <label class="check c4"><input type="checkbox" id="n-fatorr"> Fator "r" igual ou maior que 28%</label>
               <label class="check c4"><input type="checkbox" id="n-sublim"> Impedido de recolher IBS/ISS pelo Simples (sublimite)</label>
@@ -51,7 +51,7 @@
           <div id="n-itens"></div>
           <div class="acoes">
             <button type="button" class="btn btn-secundario" id="n-add">Adicionar item</button>
-            <button type="submit" class="btn btn-primario">Calcular CBS e IBS</button>
+            <button type="submit" class="btn btn-primario mag">Calcular CBS e IBS <span class="ar" aria-hidden="true">→</span></button>
           </div>
         </form>
         <div id="n-res" aria-live="polite"></div>`;
@@ -123,7 +123,7 @@
     $$("[data-anexo]", caixa).forEach((i) => { valores[i.dataset.anexo + i.dataset.campo] = i.value; });
     const fatorR = $("#n-fatorr", el).checked;
     const anexos = [...new Set($$(".item", el).map((it) => anexoDe($(".ativ", it).value, fatorR)).filter(Boolean))].sort();
-    if (!anexos.length) { caixa.innerHTML = `<p class="muted" style="margin-top:var(--space-4)">Escolha a atividade dos itens para informar as alíquotas do anexo.</p>`; return; }
+    if (!anexos.length) { caixa.innerHTML = `<p class="muted" style="margin-top:var(--s-4)">Escolha a atividade dos itens para informar as alíquotas do anexo.</p>`; return; }
     const campo = (an, c, rot) => `<label class="campo c3"><span>${rot}</span><input type="number" step="0.0001" min="0" class="num" data-anexo="${an}" data-campo="${c}" value="${esc(valores[an + c] || "")}" placeholder="0,0000"></label>`;
     caixa.innerHTML = anexos.map((an) => `
       <div class="bloco"><p class="eyebrow">Anexo ${an}</p>
@@ -261,7 +261,7 @@
     }).join("");
     return `
       ${avisosGerais.map((a) => `<p class="aviso">${esc(typeof a === "string" ? a : JSON.stringify(a))}</p>`).join("")}
-      <p class="muted mono" style="margin-top:var(--space-6);font-size:13px">Regime de apuração: ${esc((r.oper?.regimeApuracao || "—").replace(/_/g, " "))} · documento ${esc(DOCS[op.tpDoc] || op.tpDoc)}</p>
+      <p class="muted mono" style="margin-top:var(--s-6);font-size:13px">Regime de apuração: ${esc((r.oper?.regimeApuracao || "—").replace(/_/g, " "))} · documento ${esc(DOCS[op.tpDoc] || op.tpDoc)}</p>
       <div class="kpis">
         <div class="kpi"><span>Receita bruta</span><b>${reais(t.vRBSNtot)}</b></div>
         <div class="kpi"><span>CBS</span><b>${reais(t.vCBSSNtot)}</b>${Number(t.vCBSSNtotPendSusp) ? `<small>pendente ${reais(t.vCBSSNtotPendSusp)}</small>` : ""}</div>

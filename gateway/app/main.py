@@ -20,7 +20,7 @@ from .servico import Consultas
 from .simulador import Simulacao
 from .xml import XmlRecusado, detectar_tipo, explicar_erro_xml, preparar
 
-VERSAO_PROJETO = "2.0.0"
+VERSAO_PROJETO = "3.0.0"
 XML_MAX_BYTES = 2 * 1024 * 1024
 LIMITE_POR_MINUTO = int(os.getenv("LIMITE_POR_MINUTO", "120"))
 WEB_DIR = Path(os.getenv("WEB_DIR", Path(__file__).resolve().parents[2] / "web"))

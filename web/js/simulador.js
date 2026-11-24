@@ -88,7 +88,7 @@
               <label class="campo c6"><span>Município</span><select id="s-mun" required><option value="">Escolha a UF</option></select></label>
             </div>
           </fieldset>
-          <fieldset id="s-aliq" hidden style="margin-top:var(--space-6)"><legend>Alíquotas para testar · obrigatórias a partir de 2027</legend>
+          <fieldset id="s-aliq" hidden style="margin-top:var(--s-6)"><legend>Alíquotas para testar · obrigatórias a partir de 2027</legend>
             <div class="grade">
               <label class="campo c4"><span>CBS (%)</span><input id="s-cbs" type="number" step="0.0001" min="0" value="8.8"></label>
               <label class="campo c4"><span>IBS estadual (%)</span><input id="s-ibsuf" type="number" step="0.0001" min="0" value="0.05"></label>
@@ -103,7 +103,7 @@
           <div class="acoes">
             <button type="button" class="btn btn-fantasma" id="s-limpar">Nova simulação</button>
             <button type="button" class="btn btn-secundario" id="s-add">Adicionar item</button>
-            <button type="submit" class="btn btn-primario">Calcular tributos</button>
+            <button type="submit" class="btn btn-primario mag">Calcular tributos <span class="ar" aria-hidden="true">→</span></button>
           </div>
         </form>
         <div id="s-res" aria-live="polite"></div>`;
@@ -293,6 +293,7 @@
       est.ultimo = dados;
       alvo.innerHTML = resultado(el, r);
       resultadoPronto(alvo, true);
+      RTC.animar(alvo);
       faixaDeProva(el, dados, r);
       ligarXml(el);
       alvo.scrollIntoView({ behavior: "smooth", block: "start" });

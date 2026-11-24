@@ -98,7 +98,7 @@
       } catch (e) { /* serviço fora do ar: lista só as curadas */ }
     }
     if (!extras.length) return;
-    $(alvo, el).innerHTML = `<h2 class="secao" style="margin-top:var(--space-12)">${titulo}</h2><p class="muted" style="margin-top:0">Lidas da documentação oficial.</p>
+    $(alvo, el).innerHTML = `<h2 class="secao" style="margin-top:var(--s-12)">${titulo}</h2><p class="muted" style="margin-top:0">Lidas da documentação oficial.</p>
       <div class="indice">${extras.map(([s, p, t, d]) => `<a href="${rota(base, s, p)}"><b>${esc(t)}</b><span class="indice-meta">${SERV[s]} · <span class="mono">${esc(p.replace("/calculadora/", ""))}</span></span><span>${descr(d).slice(0, 160)}</span></a>`).join("")}</div>`;
   }
 
@@ -203,7 +203,7 @@
     if (!r || typeof r !== "object" || Array.isArray(r)) return "";
     const nums = Object.entries(r).filter(([k, v]) => typeof v === "number" && !/munic|codigo|^uf|numero|^cst|^ano|^id/i.test(k));
     if (!nums.length || nums.length > 6) return "";
-    return `<div class="kpis" style="margin-bottom:var(--space-4)">${nums.map(([k, v]) => `<div class="kpi"><span>${esc(k)}</span><b>${RTC.nf(2).format(Number(v))}</b></div>`).join("")}</div>`;
+    return `<div class="kpis" style="margin-bottom:var(--s-4)">${nums.map(([k, v]) => `<div class="kpi"><span>${esc(k)}</span><b>${RTC.nf(2).format(Number(v))}</b></div>`).join("")}</div>`;
   }
 
   function erroOficial(e, dados) {
@@ -299,7 +299,7 @@
     if (!lista) { alvo.innerHTML = `<section class="card">${chaveValor(r)}${jsonBruto("JSON", r)}</section>`; return; }
     alvo.innerHTML = `<section class="card">
       <div class="card-titulo"><h3>${lista.length} registro(s)</h3>
-        <div style="display:flex;gap:var(--space-2);flex-wrap:wrap"><input type="search" id="ta-filtro" placeholder="Filtrar" style="max-width:260px"><button type="button" class="btn btn-secundario btn-p" id="ta-csv">Baixar CSV</button></div></div>
+        <div style="display:flex;gap:var(--s-2);flex-wrap:wrap"><input type="search" id="ta-filtro" placeholder="Filtrar" style="max-width:260px"><button type="button" class="btn btn-secundario btn-p" id="ta-csv">Baixar CSV</button></div></div>
       <div id="ta-tab">${tabelaDeObjetos(lista)}</div></section>`;
     const norm = (t) => String(t).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
     $("#ta-filtro", alvo).addEventListener("input", (ev) => {
