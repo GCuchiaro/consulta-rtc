@@ -1,5 +1,5 @@
 # A cada push na main: roda os testes e, se passarem, publica na VPS.
-# Segredos (os mesmos do dashboard-mercado servem): DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS, DEPLOY_HOST.
+# Segredos: DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS, DEPLOY_HOST.
 name: Testes e deploy
 
 on:
