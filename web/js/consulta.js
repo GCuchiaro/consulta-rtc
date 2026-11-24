@@ -129,7 +129,7 @@
         ${tipo === "nbs" ? `<section class="card" id="c-nfse"><h2 class="secao">Na NFS-e</h2><p class="carregando">Consultando as regras da NFS-e</p></section>` : ""}`;
       if (tipo === "nbs") nfse($("#c-nfse", el), r.codigo, data);
     } catch (e) {
-      alvo.innerHTML = `<p style="margin-top:var(--space-6)"><a href="#/">← Início</a></p><p class="erro">${esc(e.message)}</p>`;
+      alvo.innerHTML = `<p style="margin-top:var(--space-6)"><a href="#/consulta">← Consulta</a></p><p class="erro">${esc(e.message)}</p>`;
     }
   }
 

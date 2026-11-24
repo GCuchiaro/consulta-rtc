@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
   <script>try { if (localStorage.getItem("rtc-tema") === "claro") document.documentElement.dataset.tema = "claro"; } catch (e) {}</script>
-  <link rel="stylesheet" href="estilo.css?v=1.0.0">
+  <link rel="stylesheet" href="estilo.css?v=1.1.0">
 </head>
 <body>
   <header class="topo">
@@ -20,7 +20,7 @@
         <span class="marca-nome">Consulta <em>RTC</em></span>
       </a>
       <nav class="nav" aria-label="Seções">
-        <a href="#/" data-nav="consulta">Consulta</a>
+        <a href="#/consulta" data-nav="consulta">Consulta</a>
         <a href="#/simulador" data-nav="simuladores">Simuladores</a>
         <a href="#/xml" data-nav="documentos">Documentos</a>
         <a href="#/ferramentas" data-nav="ferramentas">Bases e cálculos</a>
@@ -28,8 +28,168 @@
         <a href="#/sobre" data-nav="sobre">Sobre e API</a>
       </nav>
       <button class="btn btn-fantasma btn-p tema" id="tema" type="button" aria-label="Alternar tema claro e escuro">Tema claro</button>
+      <a class="btn btn-primario btn-p so-lp" href="#/consulta">Acessar a calculadora</a>
     </div>
   </header>
+
+  <!-- Página de entrada (rota #/ ou sem hash). Fica no HTML para ser lida sem JavaScript e por buscadores. -->
+  <div id="lp" class="lp">
+    <section class="wrap lp-heroi">
+      <div class="lp-heroi-texto">
+        <p class="eyebrow"><b>CBS · IBS · Imposto Seletivo</b> · Reforma Tributária do Consumo · LC 214/2025</p>
+        <h1 class="lp-titulo">A tributação de cada produto e serviço, calculada pela ferramenta da <em>Receita</em></h1>
+        <p class="lead">Em novembro de 2026 a Receita Federal abriu o código das suas calculadoras da Reforma. O Consulta RTC coloca essas ferramentas num site gratuito: você busca um produto ou serviço, vê os benefícios previstos em lei e simula a nota, sem instalar nada.</p>
+        <div class="acoes esq lp-cta">
+          <a class="btn btn-primario" href="#/consulta">Acessar a calculadora</a>
+          <button class="btn btn-secundario" type="button" data-rolar="lp-funcoes">Ver o que ela faz</button>
+        </div>
+        <form class="lp-busca" id="lp-busca" role="search" autocomplete="off">
+          <label class="eyebrow" for="lp-q">Ou comece por uma busca</label>
+          <div>
+            <input id="lp-q" type="search" placeholder="arroz, cerveja, serviços de contabilidade, 2203.00.00" minlength="2" required>
+            <button class="btn btn-secundario" type="submit">Buscar</button>
+          </div>
+        </form>
+      </div>
+
+      <figure class="lp-exemplo" aria-label="Exemplo de resultado">
+        <figcaption class="eyebrow"><b>Exemplo real</b> · simulador · regime regular</figcaption>
+        <div class="lp-exemplo-op">
+          <span class="cod">8471.30.12</span>
+          <span>Notebook · venda de R$ 1.000,00 · São Paulo · 2026</span>
+        </div>
+        <table>
+          <thead><tr><th>Tributo</th><th class="num">Alíquota</th><th class="num">Valor</th></tr></thead>
+          <tbody>
+            <tr><td>CBS</td><td class="num">0,90%</td><td class="num">R$ 9,00</td></tr>
+            <tr><td>IBS estadual</td><td class="num">0,10%</td><td class="num">R$ 1,00</td></tr>
+            <tr><td>IBS municipal</td><td class="num">0,00%</td><td class="num">R$ 0,00</td></tr>
+          </tbody>
+          <tfoot><tr><td>Total</td><td></td><td class="num">R$ 10,00</td></tr></tfoot>
+        </table>
+        <div class="lp-exemplo-op lp-exemplo-consulta">
+          <span class="cod">1006.30.21</span>
+          <span>Arroz polido → <b>200003</b> · alimentação humana, Anexo I da LC 214</span>
+        </div>
+        <p class="lp-exemplo-nota">CST 000 · cClassTrib 000001 · tributação integral. 2026 é o ano de teste: alíquotas de 0,9% e 0,1%.</p>
+      </figure>
+    </section>
+
+    <section class="lp-faixa" aria-label="Em números">
+      <div class="wrap lp-faixa-grade">
+        <div><b class="num">3</b><span>ferramentas oficiais da Receita num só lugar</span></div>
+        <div><b class="num">0</b><span>linhas alteradas no código oficial</span></div>
+        <div><b class="num">6 h</b><span>intervalo entre as buscas por versão nova</span></div>
+        <div><b class="num">R$ 0</b><span>sem cadastro, sem anúncio, código aberto</span></div>
+      </div>
+    </section>
+
+    <section class="wrap lp-secao" id="lp-funcoes">
+      <header class="lp-secao-cabeca">
+        <p class="eyebrow"><b>01</b> · O que dá para fazer</p>
+        <h2 class="lp-h2">Da consulta ao XML da <em>nota</em></h2>
+      </header>
+      <div class="lp-funcoes">
+        <a href="#/consulta">
+          <span class="eyebrow">Consulta</span>
+          <b>Como o produto ou serviço é tributado</b>
+          <span>Busca por nome, NCM ou NBS na hierarquia oficial. A ficha mostra as reduções e isenções com o item da LC 214/2025 que as fundamenta, o Imposto Seletivo e, para serviços, as regras da NFS-e.</span>
+        </a>
+        <a href="#/simulador">
+          <span class="eyebrow">Simulador · regime regular</span>
+          <b>CBS, IBS e IS item a item</b>
+          <span>Até 30 itens por operação, com UF, município e classificação tributária. Devolve a memória de cálculo oficial, os totais e o XML dos grupos de tributação para NF-e, NFC-e, NFS-e, CT-e, BP-e e NF3-e.</span>
+        </a>
+        <a href="#/simples">
+          <span class="eyebrow">Simulador · Simples Nacional</span>
+          <b>A nota de quem está no Simples</b>
+          <span>CBS e IBS por atividade (cAtivSN) e anexo, com fator "r", sublimite e as alíquotas efetivas do PGDAS, pela calculadora própria do Simples.</span>
+        </a>
+        <a href="#/xml">
+          <span class="eyebrow">Documentos</span>
+          <b>Validação de XML e DANFSe</b>
+          <span>Confere o XML contra os schemas oficiais e aponta a linha do erro, explicado em português. Gera o PDF do DANFSe a partir do XML da NFS-e.</span>
+        </a>
+        <a href="#/ferramentas">
+          <span class="eyebrow">Bases e cálculos</span>
+          <b>Base de cálculo, pedágio e indicadores</b>
+          <span>Base unificada de NF-e e NFS-e, bases de CBS/IBS e de IS de mercadorias, pedágio e validação do indicador de operação, com os formulários montados a partir da documentação oficial.</span>
+        </a>
+        <a href="#/tabelas">
+          <span class="eyebrow">Tabelas</span>
+          <b>As tabelas oficiais, com filtro e CSV</b>
+          <span>Classificações tributárias, CST, fundamentação legal, alíquotas de referência, redutores, regras da NFS-e e atividades do Simples, sempre na versão em vigor.</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="wrap lp-secao">
+      <header class="lp-secao-cabeca">
+        <p class="eyebrow"><b>02</b> · Como funciona</p>
+        <h2 class="lp-h2">Três passos, nenhum <em>cadastro</em></h2>
+      </header>
+      <ol class="lp-passos">
+        <li><span class="num">01</span><b>Busque</b><p>Digite o nome do produto ou serviço, ou o código NCM/NBS. A busca percorre a hierarquia oficial inteira.</p></li>
+        <li><span class="num">02</span><b>Entenda</b><p>Veja quais classificações tributárias valem para o código, o benefício de cada uma e o trecho da lei que o garante.</p></li>
+        <li><span class="num">03</span><b>Simule</b><p>Leve o item para o simulador, informe valor, local e data, e baixe o XML pronto para conferir com o seu emissor.</p></li>
+      </ol>
+    </section>
+
+    <section class="wrap lp-secao lp-origem">
+      <div>
+        <p class="eyebrow"><b>03</b> · De onde vêm os números</p>
+        <h2 class="lp-h2">As regras são da Receita, não <em>nossas</em></h2>
+        <p class="lead">O site não refaz nenhum cálculo. Cada resultado sai das ferramentas que a própria Receita Federal publicou como código aberto, rodando sem modificação. Quando sai uma versão nova, um robô monta o site com ela, testa com dados reais e publica sozinho. Se o teste falhar, a versão anterior continua no ar.</p>
+        <p class="mono lp-versoes" id="lp-versoes">Consultando as versões em uso…</p>
+      </div>
+      <ul class="lp-repos">
+        <li><span class="eyebrow">Java</span><b>Calculadora · regime regular</b><a href="https://github.com/ReceitaFederal/calculadora-rtc-regime-regular" target="_blank" rel="noopener">ReceitaFederal/calculadora-rtc-regime-regular</a></li>
+        <li><span class="eyebrow">Java</span><b>Calculadora · Simples Nacional</b><a href="https://github.com/ReceitaFederal/calculadora-rtc-simples-nacional" target="_blank" rel="noopener">ReceitaFederal/calculadora-rtc-simples-nacional</a></li>
+        <li><span class="eyebrow">Go</span><b>Gerador de DANFSe</b><a href="https://github.com/ReceitaFederal/calculadora-rtc-gerador-danfse" target="_blank" rel="noopener">ReceitaFederal/calculadora-rtc-gerador-danfse</a></li>
+      </ul>
+    </section>
+
+    <section class="wrap lp-secao">
+      <header class="lp-secao-cabeca">
+        <p class="eyebrow"><b>04</b> · Para quem desenvolve</p>
+        <h2 class="lp-h2">API aberta e conector para o <em>Claude</em></h2>
+      </header>
+      <div class="lp-dev">
+        <div>
+          <p>Tudo o que o site faz está disponível por HTTP, com documentação interativa em <a href="/api/docs">/api/docs</a>. A API oficial completa das duas calculadoras também fica acessível, com o OpenAPI de cada uma.</p>
+          <p>No Claude, adicione um conector personalizado com o endereço <code>/mcp/</code> e pergunte em português: "qual a tributação do leite UHT em 2027?".</p>
+          <p><a href="#/sobre">Ver endpoints e ferramentas do MCP →</a></p>
+        </div>
+        <pre class="codigo lp-codigo">curl https://rtc.giovannicuchiaro.com/api/produto/10063021
+
+{ "codigo": "10063021",
+  "descricao": "Polido ou brunido",
+  "classificacoes": [
+    { "cClassTrib": "200003",
+      "descricao": "Vendas de produtos destinados
+                    à alimentação humana (Anexo I)" }, … ] }</pre>
+      </div>
+    </section>
+
+    <section class="wrap lp-secao">
+      <header class="lp-secao-cabeca">
+        <p class="eyebrow"><b>05</b> · Antes de usar</p>
+        <h2 class="lp-h2">O que vale <em>saber</em></h2>
+      </header>
+      <dl class="lp-faq">
+        <div><dt>Preciso pagar ou criar conta?</dt><dd>Não. O site é gratuito, não pede cadastro e o código está aberto no GitHub.</dd></div>
+        <div><dt>Vocês guardam o que eu envio?</dt><dd>Não. Valores, itens e XMLs passam pelas calculadoras e voltam para você. Nada fica gravado.</dd></div>
+        <div><dt>Substitui o meu contador?</dt><dd>Não. É uma ferramenta de consulta e conferência. A decisão de como tributar cada operação continua sendo do profissional responsável.</dd></div>
+        <div><dt>E depois de 2026?</dt><dd>Para 2027 em diante a Receita ainda não publicou as alíquotas definitivas. O simulador pede as alíquotas que você quer testar e marca o resultado como simulado.</dd></div>
+      </dl>
+    </section>
+
+    <section class="wrap lp-final">
+      <h2 class="lp-h2">Comece pela <em>busca</em></h2>
+      <p class="lead">Arroz, cerveja, consultoria, um código NCM: o resultado sai na hora, com a fundamentação legal.</p>
+      <div class="acoes esq"><a class="btn btn-primario" href="#/consulta">Acessar a calculadora</a></div>
+    </section>
+  </div>
 
   <main class="wrap" id="app"></main>
 
@@ -49,13 +209,13 @@
     </div>
   </footer>
 
-  <script src="js/nucleo.js?v=1.0.0"></script>
-  <script src="js/consulta.js?v=1.0.0"></script>
-  <script src="js/simulador.js?v=1.0.0"></script>
-  <script src="js/simples.js?v=1.0.0"></script>
-  <script src="js/documentos.js?v=1.0.0"></script>
-  <script src="js/ferramentas.js?v=1.0.0"></script>
-  <script src="js/sobre.js?v=1.0.0"></script>
-  <script src="js/app.js?v=1.0.0"></script>
+  <script src="js/nucleo.js?v=1.1.0"></script>
+  <script src="js/consulta.js?v=1.1.0"></script>
+  <script src="js/simulador.js?v=1.1.0"></script>
+  <script src="js/simples.js?v=1.1.0"></script>
+  <script src="js/documentos.js?v=1.1.0"></script>
+  <script src="js/ferramentas.js?v=1.1.0"></script>
+  <script src="js/sobre.js?v=1.1.0"></script>
+  <script src="js/app.js?v=1.1.0"></script>
 </body>
 </html>

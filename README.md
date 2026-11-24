@@ -16,6 +16,8 @@ orientação de um contador. No ar em <https://rtc.giovannicuchiaro.com>.
 
 ## O que o site faz
 
+- **Página de entrada** — a raiz do site (`#/`) apresenta as funcionalidades e leva à calculadora
+  (`#/consulta`); é HTML estático, lido também sem JavaScript.
 - **Consulta** — busca de produtos (NCM) e serviços (NBS) por nome ou código, com a hierarquia
   oficial. A ficha mostra os benefícios do código (cClassTrib ligadas por anexo da LC 214/2025, com o
   texto do item), Imposto Seletivo, outras classificações aceitas e, para serviços, as regras da NFS-e

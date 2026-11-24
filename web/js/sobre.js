@@ -14,7 +14,7 @@
         <section class="card">
           <div class="card-titulo"><h2 class="secao">Versões em uso</h2><span class="eyebrow">atualização automática</span></div>
           <div id="so-versoes"><p class="carregando">Consultando os serviços</p></div>
-          <p class="nota">Todo dia um robô confere os repositórios oficiais. Saiu versão nova: ele monta o site com ela, testa com dados reais e publica. Se o teste falhar, a versão anterior continua no ar e o problema é registrado no repositório do projeto.</p>
+          <p class="nota">A cada 6 horas um robô confere os repositórios oficiais. Saiu versão nova: ele monta o site com ela, testa com dados reais e publica. Se o teste falhar, a versão anterior continua no ar e o problema é registrado no repositório do projeto.</p>
         </section>
         <section class="card">
           <h2 class="secao">Use no Claude <em>(MCP)</em></h2>
