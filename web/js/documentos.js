@@ -87,9 +87,9 @@
       const r = await api(`/api/validar-xml?${p}`, { method: "POST", headers: { "Content-Type": "application/xml" }, body: xml });
       const nome = $(`#x-tipo option[value="${r.tipo}"]`, el)?.textContent || r.tipo;
       alvo.innerHTML = r.valido
-        ? `<div class="resultado-ok"><p class="eyebrow">Resultado</p><h2 class="titulo">XML <em>válido</em></h2><p class="muted">${esc(nome)} · ${r.subtipo === "nota" ? "documento completo" : "grupo de tributação"} · estrutura conforme o XSD oficial.</p></div>`
+        ? `<div class="resultado-ok"><h2 class="titulo">XML <em>válido</em></h2><p class="muted">${esc(nome)} · ${r.subtipo === "nota" ? "documento completo" : "grupo de tributação"} · estrutura conforme o XSD oficial.</p></div>`
         : r.erros.map((e) => `<div class="caixa-erro">
-            <p class="eyebrow">Erro${e.linha ? ` · linha ${e.linha}, coluna ${e.coluna}` : ""}</p>
+            <p class="erro-local">Erro${e.linha ? ` na linha ${e.linha}, coluna ${e.coluna}` : ""}</p>
             <p style="font-size:17px;line-height:26px;margin:0 0 var(--space-3)"><b>${esc(e.mensagem)}</b></p>
             ${trecho(xml, e.linha, e.coluna)}
             <p class="muted">${esc(nome)}. A validação oficial para no primeiro erro: corrija e valide de novo.</p>
@@ -136,7 +136,7 @@
       const nome = (vd.nome || "nfse").replace(/\.xml$/i, "") + "-danfse.pdf";
       baixar(nome, pdf);
       const url = URL.createObjectURL(pdf);
-      alvo.innerHTML = `<div class="resultado-ok"><p class="eyebrow">Pronto · ${(pdf.size / 1024).toFixed(0)} KB</p><h2 class="titulo">DANFSe <em>gerado</em></h2>
+      alvo.innerHTML = `<div class="resultado-ok"><h2 class="titulo">DANFSe <em>gerado</em></h2><p class="muted">PDF pronto · ${(pdf.size / 1024).toFixed(0)} KB</p>
         <div class="acoes esq"><a class="btn btn-primario" href="${url}" download="${esc(nome)}">Baixar PDF</a><a class="btn btn-secundario" href="${url}" target="_blank" rel="noopener">Abrir em outra aba</a></div></div>`;
     } catch (e) { alvo.innerHTML = `<p class="caixa-erro"><b>${esc(e.message)}</b></p>`; }
   }

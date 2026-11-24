@@ -25,8 +25,13 @@
   $("#lp-busca").addEventListener("submit", (ev) => {
     ev.preventDefault();
     const q = $("#lp-q").value.trim();
-    if (q.length >= 2) location.hash = `#/busca/${encodeURIComponent(q)}`;
+    // Sem termo, leva à tela da consulta (com exemplos) em vez de não fazer nada.
+    location.hash = q.length >= 2 ? `#/busca/${encodeURIComponent(q)}` : "#/consulta";
   });
+
+  // Gravura da landing: rosetas e microtexto; a roseta grande se grava uma vez ao abrir.
+  RTC.gravar($("#lp"));
+  $(".lp-roseta")?.classList.add("gravando");
 
   RTC.iniciarTema();
   window.addEventListener("hashchange", RTC.rotear);

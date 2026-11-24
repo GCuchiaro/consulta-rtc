@@ -42,10 +42,9 @@ window.RTC = (() => {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
-  // Cabeçalho padrão de tela: eyebrow em mono, título em serifa com uma palavra em itálico.
-  const cabeca = (eyebrow, tituloHTML, lead) => `
+  // Cabeçalho padrão de tela: o título fala sozinho (o primeiro argumento, rótulo antigo, não é mais exibido).
+  const cabeca = (_rotulo, tituloHTML, lead) => `
     <header class="cabeca">
-      <p class="eyebrow">${eyebrow}</p>
       <h1>${tituloHTML}</h1>
       ${lead ? `<p class="lead">${lead}</p>` : ""}
     </header>`;
@@ -81,6 +80,9 @@ window.RTC = (() => {
       return `<div>${esc(k)}</div><div class="${num ? "num" : ""}">${v === null || v === "" ? "—" : esc(typeof v === "boolean" ? (v ? "sim" : "não") : v)}</div>`;
     }).join("")}</div>`;
   }
+
+  // Seta desenhada no traço da gravura (sem glifos de texto como ícone).
+  const seta = (dir) => `<svg class="seta${dir === "esq" ? " esq" : ""}" viewBox="0 0 18 10" aria-hidden="true" focusable="false"><path d="M0 5h16M12 1l4 4-4 4"/></svg>`;
 
   // ---- formulários ----
   // Erro ligado a um campo: lançado pelo leitor do formulário e mostrado junto do campo.
@@ -122,15 +124,16 @@ window.RTC = (() => {
   const jsonBruto = (titulo, dados) => `<details><summary>${titulo}</summary><pre class="codigo">${esc(JSON.stringify(dados, null, 2))}</pre></details>`;
 
   // ---- tema ----
+  // Papel claro é o padrão (uso de dia, no escritório); o escuro fica a um clique e é lembrado.
   function aplicarTema(tema) {
-    if (tema === "claro") document.documentElement.dataset.tema = "claro"; else delete document.documentElement.dataset.tema;
-    $("#tema").textContent = tema === "claro" ? "Tema escuro" : "Tema claro";
-    $("#monograma").src = `marca/monograma-${tema === "claro" ? "claro" : "escuro"}.svg`;
+    if (tema === "escuro") document.documentElement.dataset.tema = "escuro"; else delete document.documentElement.dataset.tema;
+    $("#tema").textContent = tema === "escuro" ? "Tema claro" : "Tema escuro";
+    $("#monograma").src = `marca/monograma-${tema === "escuro" ? "escuro" : "claro"}.svg`;
   }
   function iniciarTema() {
-    aplicarTema(ler("rtc-tema") === "claro" ? "claro" : "escuro");
+    aplicarTema(ler("rtc-tema") === "escuro" ? "escuro" : "claro");
     $("#tema").addEventListener("click", () => {
-      const novo = document.documentElement.dataset.tema === "claro" ? "escuro" : "claro";
+      const novo = document.documentElement.dataset.tema === "escuro" ? "claro" : "escuro";
       guardar("rtc-tema", novo); aplicarTema(novo);
     });
   }
@@ -163,5 +166,5 @@ window.RTC = (() => {
 
   return { $, $$, esc, reais, pct, nf, hoje, dataBR, guardar, ler, api, postJSON, baixar, cabeca, subNav,
     tabelaDeObjetos, chaveValor, jsonBruto, iniciarTema, registrar, mostrar,
-    falha, limparErros, mostrarErro, vigiarResultado, resultadoPronto };
+    seta, falha, limparErros, mostrarErro, vigiarResultado, resultadoPronto };
 })();

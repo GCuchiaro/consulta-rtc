@@ -77,7 +77,7 @@
         ${cabeca("<b>04</b> · Bases e cálculos",
           "Bases de cálculo, pedágio e <em>NFS-e</em>",
           "As demais calculadoras oficiais da Receita. Os formulários são montados a partir da documentação da própria API oficial: quando uma versão nova muda um campo, a mudança aparece aqui.")}
-        <div class="indice">${FERRAMENTAS.map(([s, p, t, d]) => `<a href="${rota("ferramenta", s, p)}"><p class="eyebrow">${SERV[s]}</p><b>${esc(t)}</b><span>${esc(d)}</span></a>`).join("")}</div>
+        <div class="indice">${FERRAMENTAS.map(([s, p, t, d]) => `<a href="${rota("ferramenta", s, p)}"><b>${esc(t)}</b><span class="indice-meta">${SERV[s]}</span><span>${esc(d)}</span></a>`).join("")}</div>
         <section id="f-outras"></section>`;
       outras(el, "post", "ferramenta", FERRAMENTAS, "#f-outras", "Outras operações oficiais");
     },
@@ -98,8 +98,8 @@
       } catch (e) { /* serviço fora do ar: lista só as curadas */ }
     }
     if (!extras.length) return;
-    $(alvo, el).innerHTML = `<p class="eyebrow" style="margin-top:var(--space-12)">${titulo} · lidas da documentação oficial</p>
-      <div class="indice">${extras.map(([s, p, t, d]) => `<a href="${rota(base, s, p)}"><p class="eyebrow">${SERV[s]} · <span class="mono">${esc(p.replace("/calculadora/", ""))}</span></p><b>${esc(t)}</b><span>${descr(d).slice(0, 160)}</span></a>`).join("")}</div>`;
+    $(alvo, el).innerHTML = `<h2 class="secao" style="margin-top:var(--space-12)">${titulo}</h2><p class="muted" style="margin-top:0">Lidas da documentação oficial.</p>
+      <div class="indice">${extras.map(([s, p, t, d]) => `<a href="${rota(base, s, p)}"><b>${esc(t)}</b><span class="indice-meta">${SERV[s]} · <span class="mono">${esc(p.replace("/calculadora/", ""))}</span></span><span>${descr(d).slice(0, 160)}</span></a>`).join("")}</div>`;
   }
 
   // ---------------- uma ferramenta (POST) ----------------
@@ -122,7 +122,7 @@
         const campos = Object.entries(schema.properties || {});
         corpo.innerHTML = `
           ${cabeca(`<b>04</b> · ${SERV[s]} · <span class="mono">${esc(caminho.replace("/calculadora/", ""))}</span>`, esc(titulo), descr(cur ? cur[3] : op.description))}
-          <p><a href="#/ferramentas">← Bases e cálculos</a></p>
+          <p><a href="#/ferramentas">${RTC.seta("esq")} Bases e cálculos</a></p>
           <form id="fe-form" class="card" novalidate>
             <div class="grade">${campos.map(([nome, v]) => campo(doc, nome, v, req.has(nome))).join("")}</div>
             <div class="acoes"><button type="button" class="btn btn-secundario" id="fe-ex">Preencher com o exemplo oficial</button><button class="btn btn-primario" type="submit">Calcular</button></div>
@@ -222,7 +222,7 @@
         ${cabeca("<b>05</b> · Tabelas oficiais",
           "As tabelas da Reforma, em <em>dados abertos</em>",
           "Classificações, CST, fundamentação legal, alíquotas de referência, regras da NFS-e e atividades do Simples Nacional, direto da base da calculadora oficial, na data que você escolher.")}
-        <div class="indice">${TABELAS.map(([s, p, t, d]) => `<a href="${rota("tabela", s, p)}"><p class="eyebrow">${SERV[s]}</p><b>${esc(t)}</b><span>${esc(d)}</span></a>`).join("")}</div>
+        <div class="indice">${TABELAS.map(([s, p, t, d]) => `<a href="${rota("tabela", s, p)}"><b>${esc(t)}</b><span class="indice-meta">${SERV[s]}</span><span>${esc(d)}</span></a>`).join("")}</div>
         <section id="t-outras"></section>`;
       outras(el, "get", "tabela", TABELAS, "#t-outras", "Outras consultas oficiais");
     },
@@ -248,7 +248,7 @@
         const params = (op.parameters || []).filter((p) => p.in === "query");
         corpo.innerHTML = `
           ${cabeca(`<b>05</b> · ${SERV[s]} · <span class="mono">${esc(caminho.replace("/calculadora/", ""))}</span>`, esc(titulo), descr(cur ? cur[3] : op.description))}
-          <p><a href="#/tabelas">← Tabelas</a></p>
+          <p><a href="#/tabelas">${RTC.seta("esq")} Tabelas</a></p>
           <form id="ta-form" class="card" novalidate>
             ${params.length ? `<div class="grade">${params.map((p) => {
               const sch = resolver(doc, p.schema || {});

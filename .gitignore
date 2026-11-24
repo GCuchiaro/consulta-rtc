@@ -8,3 +8,5 @@ __pycache__/
 # Impeccable: só a configuração compartilhada vai para o repositório
 .impeccable/*
 !.impeccable/config.json
+!.impeccable/design.json
+!.impeccable/surfaces/

@@ -12,7 +12,8 @@
   const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 
   // sim = { tipo, codigo }: mostra o atalho para simular já com esta classificação.
-  function cardClasse(c, sim) {
+  // destaque: "principal" (a mais favorável, impressa nítida) ou "fantasma" (alternativas, impressão leve).
+  function cardClasse(c, sim, destaque = "") {
     const red = c.reducao ? [["CBS", c.reducao.cbs], ["IBS UF", c.reducao.ibsUf], ["IBS mun.", c.reducao.ibsMun]]
       .filter(([, v]) => v != null).map(([t, v]) => `<span class="tag ok"><i></i>Redução ${t} ${pct(v)}</span>`).join("") : "";
     const extras = [
@@ -21,14 +22,14 @@
       c.creditoPresumidoAdquirente && `<span class="tag info"><i></i>Crédito presumido · adquirente</span>`,
       ...(c.documentos || []).map((d) => `<span class="tag">${esc(d)}</span>`),
     ].filter(Boolean).join("");
-    return `<article class="classe">
+    return `<article class="classe ${destaque}">
       <div class="cod">${esc(c.cClassTrib)}</div>
       <div>
         <h3>${esc(c.descricao)}</h3>
         ${c.tratamento ? `<p>${esc(c.tratamento)}</p>` : ""}
         ${(c.anexos || []).map((a) => `<p class="lei">LC 214/2025, Anexo ${esc(a.anexo)}${a.item ? `, item ${esc(a.item)}` : ""}: ${esc(a.texto)}</p>`).join("")}
         ${red || extras ? `<div class="tags">${red}${extras}</div>` : ""}
-        ${sim ? `<p class="classe-acao"><a href="#/simulador/${sim.tipo}/${esc(sim.codigo)}/${esc(c.cClassTrib)}">Simular com a classificação ${esc(c.cClassTrib)} →</a></p>` : ""}
+        ${sim ? `<p class="classe-acao"><a href="#/simulador/${sim.tipo}/${esc(sim.codigo)}/${esc(c.cClassTrib)}">Simular com a classificação ${esc(c.cClassTrib)} ${RTC.seta()}</a></p>` : ""}
       </div>
     </article>`;
   }
@@ -36,6 +37,20 @@
   // Frase de resposta da ficha: o benefício mais forte, ou a regra geral.
   const forca = (c) => Math.max(...Object.values(c.reducao || {}).map(Number).filter((n) => !isNaN(n)), 0);
   const melhorClasse = (classes) => [...classes].sort((a, b) => forca(b) - forca(a))[0];
+
+  // Valor de face do certificado: quanto da alíquota cheia se paga no caso mais favorável.
+  const pctFace = (n) => new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(n);
+  function face(classes, codigo) {
+    let valor = `100<small>%</small>`, legenda = "da alíquota cheia";
+    if (classes.length) {
+      const f = forca(melhorClasse(classes));
+      valor = f > 0 ? `${pctFace(100 - f)}<small>%</small>` : "";
+      legenda = f > 0 ? "da alíquota cheia, se enquadrado" : "ver as condições abaixo";
+    }
+    return `<div class="face"><span class="roseta gravando" data-roseta="${esc(codigo)}" data-linhas="40"></span>
+      <div class="face-miolo">${valor ? `<b class="face-valor">${valor}</b>` : `<b class="face-valor texto">Regime<br>específico</b>`}
+      <span class="face-legenda">${legenda}</span></div></div>`;
+  }
 
   function veredito(classes, is, data) {
     const quando = periodo(data);
@@ -143,21 +158,27 @@
       const veio = /^#\/busca\/(.+)$/.exec(RTC.hashAnterior || "");
       const qAnterior = veio ? decodeURIComponent(veio[1]) : "";
       const voltar = qAnterior
-        ? `<a href="#/busca/${encodeURIComponent(qAnterior)}">← Resultados para “${esc(qAnterior)}”</a>`
-        : `<a href="#/consulta">← Nova consulta</a>`;
+        ? `<a href="#/busca/${encodeURIComponent(qAnterior)}">${RTC.seta("esq")} Resultados para “${esc(qAnterior)}”</a>`
+        : `<a href="#/consulta">${RTC.seta("esq")} Nova consulta</a>`;
       const sim = { tipo, codigo: r.codigo };
+      // A mais favorável primeiro (impressa nítida); as outras hipóteses seguem em impressão leve.
+      const melhor = classes.length ? melhorClasse(classes) : null;
+      const ordenadas = melhor ? [melhor, ...classes.filter((c) => c !== melhor)] : [];
       alvo.innerHTML = `
         <p style="margin-top:var(--space-6)">${voltar}</p>
-        <article class="card ficha-topo">
-          <p class="eyebrow">${tipo.toUpperCase()} <b>${esc(r.codigoFormatado)}</b></p>
+        <article class="ficha-topo moldura certificado"><div class="miolo">
+          <p class="micro" data-micro="CONSULTA RTC · ${tipo.toUpperCase()} ${esc(r.codigoFormatado)} · CALCULADORA OFICIAL DA RECEITA FEDERAL · LC 214/2025"></p>
+          <div class="cert-cabeca"><span class="serie">${tipo.toUpperCase()} ${esc(r.codigoFormatado)}</span><span class="ref">Referência ${dataBR(r.data)}</span></div>
           ${(r.caminho || []).length ? `<p class="ficha-trilha">${esc(r.caminho.join(" › "))} ›</p>` : ""}
           <h2 class="titulo">${esc(r.descricao || "Sem descrição na tabela oficial")}</h2>
+          <div class="cert-corpo">
+          ${face(classes, r.codigo)}
+          <div>
           ${veredito(classes, is, r.data || data)}
           <div class="tags">
             ${is.incide ? `<span class="tag alerta"><i></i>Incide Imposto Seletivo${is.aliquotaAdValorem != null ? ` · ${pct(is.aliquotaAdValorem)}` : ""}</span>`
                         : `<span class="tag ok"><i></i>Sem Imposto Seletivo</span>`}
             ${r.unidade ? `<span class="tag">Unidade ${esc(r.unidade)}</span>` : ""}
-            <span class="tag">Referência ${dataBR(r.data)}</span>
           </div>
           <div id="c-futuro"></div>
           <div class="acoes esq">
@@ -168,12 +189,13 @@
             <a class="btn btn-secundario" href="#/simples/${tipo}/${esc(r.codigo)}">Simular no Simples Nacional</a>
           </div>
           <p class="nota">Regime regular é a empresa do lucro real ou presumido; Simples Nacional, a optante pelo Simples.</p>
-        </article>
+          </div></div>
+        </div></article>
         <section class="card">
           <div class="card-titulo"><h2 class="secao">Benefícios deste ${nome}</h2><span class="eyebrow">${plural(classes.length, "classificação", "classificações")}</span></div>
           ${classes.length
             ? `<p class="muted" style="max-width:var(--measure)">Classificações tributárias (cClassTrib, o código que vai na nota) que a calculadora oficial aceita para este código por constarem de um anexo da LC 214/2025${tipo === "nbs" ? " ou da tabela da NFS-e" : ""}. Cada uma tem condições próprias (destinatário, tipo de operação): confira a fundamentação antes de usar.</p>
-               ${classes.map((c) => cardClasse(c, sim)).join("")}`
+               ${ordenadas.map((c, n) => cardClasse(c, sim, ordenadas.length > 1 ? (n ? "fantasma" : "principal") : "")).join("")}`
             : `<p class="muted">Nenhuma redução ou regime específico ligado a este código pelos anexos da LC 214/2025.</p>`}
           <p class="nota">Fora dessas hipóteses vale a tributação integral: CST 000, cClassTrib ${esc(r.regraGeral)}.</p>
           ${outras.length ? `<details style="margin-top:var(--space-4)"><summary>Outras ${outras.length} classificações aceitas, sem anexo</summary>
@@ -181,10 +203,11 @@
             ${outras.map((c) => cardClasse(c, sim)).join("")}</details>` : ""}
         </section>
         ${tipo === "nbs" ? `<section class="card" id="c-nfse"><h2 class="secao">Na NFS-e</h2><p class="carregando">Consultando as regras da NFS-e</p></section>` : ""}`;
+      RTC.gravar(alvo);
       if (tipo === "nbs") nfse($("#c-nfse", el), r.codigo, data);
       if (data < INICIO_2027) mudancaEm2027(el, alvo, vez, tipo, r);
     } catch (e) {
-      alvo.innerHTML = `<p style="margin-top:var(--space-6)"><a href="#/consulta">← Consulta</a></p><p class="erro">${esc(e.message)}</p>`;
+      alvo.innerHTML = `<p style="margin-top:var(--space-6)"><a href="#/consulta">${RTC.seta("esq")} Consulta</a></p><p class="erro">${esc(e.message)}</p>`;
     }
   }
 

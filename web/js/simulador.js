@@ -249,7 +249,10 @@
       const quer = it.dataset.cclassPre || atual;
       if ([...sel.options].some((o) => o.value === quer)) sel.value = quer;
       it.dataset.cclassPre = "";
-      it.dataset.beneficios = JSON.stringify((ficha.classificacoes || []).map((c) => ({ c: c.cClassTrib, t: c.tratamento || c.descricao })));
+      // Benefícios do código, do mais favorável (maior redução) para o menos.
+      const reducao = (c) => Math.max(0, ...Object.values(c.reducao || {}).map(Number).filter((n) => !isNaN(n)));
+      it.dataset.beneficios = JSON.stringify((ficha.classificacoes || [])
+        .map((c) => ({ c: c.cClassTrib, t: c.tratamento || c.descricao, f: reducao(c) })).sort((a, b) => b.f - a.f));
       avisoBeneficio(it);
       it.dataset.is = ficha.impostoSeletivo?.incide ? "1" : "";
       const campo = $(".cod-busca", it);
@@ -290,10 +293,32 @@
       est.ultimo = dados;
       alvo.innerHTML = resultado(el, r);
       resultadoPronto(alvo, true);
+      faixaDeProva(el, dados, r);
       ligarXml(el);
       alvo.scrollIntoView({ behavior: "smooth", block: "start" });
       $("#s-resumo", el)?.focus({ preventScroll: true });
     } catch (e) { alvo.innerHTML = `<p class="caixa-erro"><b>${esc(e.message)}</b></p>`; }
+  }
+
+  // Faixa de prova: a mesma operação calculada com a regra geral e com o benefício mais favorável, lado a lado.
+  async function faixaDeProva(el, dados, r) {
+    const caixa = $("#s-prova", el);
+    const dom = $$(".item", el);
+    const melhores = dom.map((it) => beneficiosDo(it)[0]?.c);
+    if (!caixa || !melhores.some(Boolean)) return;
+    const cenario = (fn) => ({ ...dados, itens: dados.itens.map((i, n) => ({ ...i, cClassTrib: fn(i, n) })) });
+    const [geral, benef] = await Promise.allSettled([
+      postJSON("/api/simular", cenario(() => "000001")),
+      postJSON("/api/simular", cenario((i, n) => melhores[n] || i.cClassTrib)),
+    ]);
+    if (geral.status !== "fulfilled" || benef.status !== "fulfilled" || !caixa.isConnected) return;
+    const tg = Number(geral.value.totais?.total), tb = Number(benef.value.totais?.total), atual = Number(r.totais?.total);
+    const economia = tg - tb;
+    caixa.innerHTML = `<div class="prova" aria-label="Comparação entre regra geral e benefício">
+      <div class="${atual === tg ? "atual" : ""}"><span>Regra geral em todos os itens</span><b>${reais(tg)}</b></div>
+      <div class="melhor ${atual === tb ? "atual" : ""}"><span>Com o benefício mais favorável</span><b>${reais(tb)}</b></div>
+      <div class="prova-nota">${economia > 0 ? `O benefício reduz ${reais(economia)} (${pct((economia / tg) * 100)}) nesta operação, se ela cumprir as condições da LC 214. ` : ""}As duas faixas saem da mesma calculadora oficial.</div>
+    </div>`;
   }
 
   function linha(nome, t) {
@@ -329,6 +354,7 @@
     return `
       ${(r.avisos || []).map((a) => `<p class="aviso">${esc(a)}</p>`).join("")}
       <p class="resumo" id="s-resumo" tabindex="-1">Total de <b>${reais(t.total)}</b> em tributos sobre ${reais(t.base)} de base${Number(t.base) > 0 ? `, ${pct((Number(t.total) / Number(t.base)) * 100)} da base` : ""}${r.simulado ? ", com as alíquotas de teste informadas" : ""}.</p>
+      <div id="s-prova"></div>
       <div class="kpis">
         <div class="kpi"><span>Base de cálculo</span><b>${reais(t.base)}</b></div>
         <div class="kpi"><span>CBS</span><b>${reais(t.cbs)}</b></div>
