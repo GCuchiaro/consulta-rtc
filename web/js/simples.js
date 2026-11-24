@@ -1,12 +1,12 @@
 "use strict";
 // Simulador do Simples Nacional: calculadora oficial do Simples, endpoint "não assistido" (todos os documentos).
 (() => {
-  const { $, $$, esc, reais, pct, hoje, api, postJSON, cabeca, guardar, ler, jsonBruto } = RTC;
+  const { $, $$, esc, reais, pct, hoje, api, postJSON, cabeca, guardar, ler, jsonBruto, falha, mostrarErro, limparErros, vigiarResultado, resultadoPronto } = RTC;
   const SN = "/api/oficial/sn/calculadora";
   const DOCS = { "55": "NF-e", "65": "NFC-e", "91": "NFS-e", "57": "CT-e", "67": "CT-e OS", "63": "BP-e", "62": "NFCom", "93": "NF3-e" };
   const ESTADOS = { CALCULADO: ["ok", "Calculado"], CALCULO_SIMULADO: ["info", "Calculado (simulado)"], NAO_CALCULADO: ["alerta", "Não calculado"],
     INCONSISTENCIA_ENTRADA: ["erro", "Dados inconsistentes"], NAO_IMPLEMENTADO: ["alerta", "Não implementado"], FALHA_TECNICA: ["erro", "Falha técnica"] };
-  const st = { atividades: [], ultimo: null };
+  const st = { atividades: [], ultimo: null, link: null, marcar: () => {} };
   const num = (v, casas) => (v === "" || v == null || isNaN(v) ? undefined : Number(v).toFixed(casas));
   const nfse = (el) => $("#n-doc", el).value === "91";
 
@@ -55,12 +55,14 @@
           </div>
         </form>
         <div id="n-res" aria-live="polite"></div>`;
-      $("#n-data", el).value = ler("rtc-sn-data") || "2027-01-01";
+      // A data não é guardada entre visitas (o Simples na reforma começa em 2027).
+      $("#n-data", el).value = "2027-01-01";
       $("#n-doc", el).value = ler("rtc-sn-doc") || "55";
-      $("#n-data", el).addEventListener("change", () => { guardar("rtc-sn-data", $("#n-data", el).value); carregarAtividades(el); });
+      $("#n-data", el).addEventListener("change", () => carregarAtividades(el));
       $("#n-doc", el).addEventListener("change", () => { guardar("rtc-sn-doc", $("#n-doc", el).value); ajustarDoc(el); carregarAtividades(el); });
       $("#n-fatorr", el).addEventListener("change", () => desenharAnexos(el));
-      $("#n-add", el).addEventListener("click", () => adicionarItem(el));
+      st.marcar = vigiarResultado($("#n-form", el), $("#n-res", el));
+      $("#n-add", el).addEventListener("click", () => { adicionarItem(el); st.marcar(); });
       $("#n-form", el).addEventListener("submit", (ev) => { ev.preventDefault(); calcular(el); });
       ajustarDoc(el);
       adicionarItem(el);
@@ -68,12 +70,15 @@
     },
     entrar([, tipo, codigo], el) {
       document.title = "Simples Nacional · Consulta RTC";
-      if ((tipo === "ncm" || tipo === "nbs") && codigo) {
+      if (!((tipo === "ncm" || tipo === "nbs") && codigo)) { st.link = null; return; }
+      if (st.link === location.hash) return; // voltou ao mesmo link: mantém o formulário
+      st.link = location.hash;
+      {
         if (tipo === "nbs") { $("#n-doc", el).value = "91"; ajustarDoc(el); carregarAtividades(el); }
         const it = $$(".item", el)[0] || adicionarItem(el);
         it.dataset.tipo = tipo; it.dataset.codigo = codigo; $(".cod-busca", it).value = codigo;
+        if (!$(".valor", it).value) $(".valor", it).value = "1000";
         carregarClasses(el, it);
-        history.replaceState(null, "", "#/simples");
       }
     },
   });
@@ -149,7 +154,7 @@
     $("#n-itens", el).appendChild(it);
     preencherAtividades(it);
     $(".ativ", it).addEventListener("change", () => desenharAnexos(el));
-    $(".remover", it).addEventListener("click", () => { it.remove(); renumerar(el); desenharAnexos(el); });
+    $(".remover", it).addEventListener("click", () => { it.remove(); renumerar(el); desenharAnexos(el); st.marcar && st.marcar(); });
     RTC.ligarBuscaProduto(it, { data: () => $("#n-data", el).value || hoje(), aoEscolher: () => carregarClasses(el, it) });
     ajustarDoc(el);
     return it;
@@ -177,7 +182,7 @@
     const ehNfse = nfse(el);
     const fatorR = $("#n-fatorr", el).checked;
     const op = { id: "consulta-rtc", versao: "3.0.0", data: $("#n-data", el).value, tpDoc: $("#n-doc", el).value };
-    if (!op.data) throw new Error("Informe a data do fato gerador.");
+    if (!op.data) throw falha("Informe a data do fato gerador.", $("#n-data", el));
     if (ehNfse) Object.assign(op, { opSimpNac: $("#n-op", el).value, regApIBSCBSSN: $("#n-regibs", el).value, regApTribSN: $("#n-regtrib", el).value });
     else { op.CRT = $("#n-crt", el).value; if ($("#n-tpreg", el).value) op.tpRegimeIBSCBS = $("#n-tpreg", el).value; }
     if (ehNfse && ["1", "2"].includes(op.opSimpNac)) { delete op.regApIBSCBSSN; delete op.regApTribSN; }
@@ -193,7 +198,7 @@
     op.aliquotasEfetivas = aliq;
     op.itens = $$(".item", el).map((it, i) => {
       const valor = $(".valor", it).value;
-      if (!(parseFloat(valor) >= 0)) throw new Error(`Item ${i + 1}: informe a receita do item.`);
+      if (!(parseFloat(valor) >= 0)) throw falha(`Item ${i + 1}: informe a receita do item.`, $(".valor", it));
       const item = { numero: i + 1, cAtivSN: $(".ativ", it).value || undefined, cClassTrib: $(".cclass", it).value, baseCalculo: num(valor, 2) };
       if (it.dataset.codigo) item[it.dataset.tipo] = it.dataset.codigo;
       if (ehNfse) {
@@ -209,11 +214,15 @@
   async function calcular(el) {
     const alvo = $("#n-res", el);
     let op;
-    try { op = montarPayload(el); } catch (e) { alvo.innerHTML = `<p class="caixa-erro"><b>${esc(e.message)}</b></p>`; return; }
+    const form = $("#n-form", el);
+    try { op = montarPayload(el); } catch (e) { mostrarErro(form, alvo, e); return; }
+    limparErros(form);
+    resultadoPronto(alvo, false);
     alvo.innerHTML = `<p class="carregando">Calculando na calculadora oficial do Simples Nacional</p>`;
     try {
       const r = await postJSON(`${SN}/observabilidade/simples-nacional/nao-assistido`, op);
       alvo.innerHTML = resultado(el, r, op);
+      resultadoPronto(alvo, true);
       alvo.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (e) {
       const c = e.corpo || {};

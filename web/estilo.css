@@ -96,6 +96,19 @@ h3 { font: 600 18px/26px var(--font-sans); margin: 0; }
 .erro { color: var(--negative); }
 .caixa-erro { border: 1px solid var(--negative); padding: var(--space-4); margin-top: var(--space-4); }
 .caixa-erro b { color: var(--negative); }
+/* erro junto do campo que precisa de correção */
+.erro-campo { font: 500 13px/18px var(--font-sans); color: var(--negative); }
+[aria-invalid="true"] { border-color: var(--negative) !important; }
+/* resultado calculado antes da última mudança no formulário */
+.desatualizado > :not(.aviso-velho) { opacity: .45; }
+.aviso-velho { margin-top: var(--space-8); }
+#s-link { margin-top: 0; margin-bottom: var(--space-4); }
+/* telas da consulta com resultado: o título grande sai (fica só para leitores de tela) */
+.compacta .cabeca { padding: var(--space-8) 0 0; }
+.compacta .cabeca h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.compacta .cabeca .lead { display: none; }
+.compacta .barra-busca { margin-top: var(--space-2); }
+.em-ficha .filtros { display: none; }
 .vazio, .carregando { color: var(--text-secondary); padding: var(--space-6) 0; }
 .carregando::before { content: ""; display: inline-block; width: 8px; height: 8px; background: var(--accent); margin-right: var(--space-2); animation: pisca 1s steps(2) infinite; }
 @keyframes pisca { 50% { opacity: 0; } }
@@ -160,9 +173,9 @@ legend { font: 400 11px/16px var(--font-mono); letter-spacing: .08em; text-trans
 .tag.ok i { background: var(--accent); } .tag.alerta i { background: var(--warning); } .tag.erro i { background: var(--negative); } .tag.info i { background: var(--info); }
 .classe { border-top: 1px solid var(--line); padding: var(--space-4) 0; display: grid; grid-template-columns: 96px 1fr; gap: var(--space-4); }
 .classe:first-of-type { border-top: 1px solid var(--text-primary); }
-.classe h4 { margin: 0; font: 600 15px/22px var(--font-sans); }
+.classe h3, .classe h4 { margin: 0; font: 600 15px/22px var(--font-sans); }
 .classe p { margin: var(--space-1) 0 0; font-size: 13px; line-height: 20px; color: var(--text-secondary); }
-.classe .lei { color: var(--text-primary); border-left: 1px solid var(--accent); padding-left: var(--space-3); margin-top: var(--space-2); }
+.classe .lei { color: var(--text-primary); border-left: 1px solid var(--accent); padding-left: var(--space-3); margin-top: var(--space-2); max-width: 75ch; }
 .classe .tags { margin-top: var(--space-3); }
 @media (max-width: 560px) { .classe { grid-template-columns: 1fr; gap: var(--space-1); } }
 details > summary { cursor: pointer; font: 500 13px/20px var(--font-sans); color: var(--accent); list-style: none; padding: var(--space-2) 0; }
@@ -302,7 +315,7 @@ pre.trecho i { display: inline-block; width: 3em; color: var(--text-secondary); 
 
 .lp-origem { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: var(--space-12); align-items: start; }
 .lp-fatos { margin: 0; border-top: 1px solid var(--text-primary); }
-.lp-fatos div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-4); padding: var(--space-3) 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.lp-fatos div { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-4); padding: var(--space-3) 0; border-bottom: 1px solid var(--line); align-items: baseline; }
 .lp-fatos dt { font-size: 14px; color: var(--text-secondary); white-space: nowrap; }
 .lp-fatos dd { margin: 0; font-size: 14px; text-align: right; }
 .lp-fatos dd.num { font-size: 16px; }

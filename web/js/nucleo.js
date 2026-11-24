@@ -82,6 +82,43 @@ window.RTC = (() => {
     }).join("")}</div>`;
   }
 
+  // ---- formulários ----
+  // Erro ligado a um campo: lançado pelo leitor do formulário e mostrado junto do campo.
+  const falha = (mensagem, campo) => Object.assign(new Error(mensagem), { campo });
+  let seqErro = 0;
+  function limparErros(form) {
+    $$(".erro-campo", form).forEach((s) => s.remove());
+    $$("[aria-invalid]", form).forEach((c) => { c.removeAttribute("aria-invalid"); c.removeAttribute("aria-describedby"); });
+  }
+  // Mostra o erro no campo (foco + rolagem) ou, sem campo, na caixa de erro do resultado.
+  function mostrarErro(form, alvo, e) {
+    limparErros(form);
+    const c = e.campo;
+    if (!c) { alvo.innerHTML = `<p class="caixa-erro"><b>${esc(e.message)}</b></p>`; return; }
+    const id = `erro-${++seqErro}`;
+    (c.closest("label") || c).insertAdjacentHTML("beforeend", `<span class="erro-campo" id="${id}">${esc(e.message)}</span>`);
+    c.setAttribute("aria-invalid", "true");
+    c.setAttribute("aria-describedby", id);
+    c.addEventListener("input", () => limparErros(form), { once: true });
+    c.scrollIntoView({ behavior: "smooth", block: "center" });
+    c.focus({ preventScroll: true });
+  }
+  // Resultado que fica para trás quando o formulário muda: avisa em vez de mostrar números velhos.
+  function vigiarResultado(form, alvo) {
+    const marcar = () => {
+      if (!alvo.dataset.pronto || alvo.classList.contains("desatualizado")) return;
+      alvo.classList.add("desatualizado");
+      alvo.insertAdjacentHTML("afterbegin", `<p class="aviso aviso-velho" role="status">O formulário mudou depois deste cálculo. Calcule de novo para atualizar o resultado.</p>`);
+    };
+    form.addEventListener("input", marcar);
+    form.addEventListener("change", marcar);
+    return marcar;
+  }
+  const resultadoPronto = (alvo, pronto) => {
+    alvo.classList.remove("desatualizado");
+    if (pronto) alvo.dataset.pronto = "1"; else delete alvo.dataset.pronto;
+  };
+
   const jsonBruto = (titulo, dados) => `<details><summary>${titulo}</summary><pre class="codigo">${esc(JSON.stringify(dados, null, 2))}</pre></details>`;
 
   // ---- tema ----
@@ -125,5 +162,6 @@ window.RTC = (() => {
   }
 
   return { $, $$, esc, reais, pct, nf, hoje, dataBR, guardar, ler, api, postJSON, baixar, cabeca, subNav,
-    tabelaDeObjetos, chaveValor, jsonBruto, iniciarTema, registrar, mostrar };
+    tabelaDeObjetos, chaveValor, jsonBruto, iniciarTema, registrar, mostrar,
+    falha, limparErros, mostrarErro, vigiarResultado, resultadoPronto };
 })();

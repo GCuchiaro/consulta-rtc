@@ -3,7 +3,10 @@
 (() => {
   const { $, $$, esc, pct, hoje, dataBR, api, cabeca, guardar, ler, tabelaDeObjetos } = RTC;
 
-  const datas = () => [[hoje(), `Hoje · ${dataBR(hoje())}`], ["2027-01-01", "A partir de 01.01.2027"]];
+  const INICIO_2027 = "2027-01-01";
+  const datas = () => [[hoje(), `Hoje · ${dataBR(hoje())}`], [INICIO_2027, "A partir de 2027"]];
+  // Como o veredito nomeia o período consultado: a resposta muda com a data (o IS começa em 2027).
+  const periodo = (data) => (data === INICIO_2027 ?"A partir de 2027" : `Em ${data.slice(0, 4)}`);
 
   const EXEMPLOS = ["arroz", "cerveja", "medicamentos", "serviços de contabilidade", "2203.00.00"];
   const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
@@ -21,7 +24,7 @@
     return `<article class="classe">
       <div class="cod">${esc(c.cClassTrib)}</div>
       <div>
-        <h4>${esc(c.descricao)}</h4>
+        <h3>${esc(c.descricao)}</h3>
         ${c.tratamento ? `<p>${esc(c.tratamento)}</p>` : ""}
         ${(c.anexos || []).map((a) => `<p class="lei">LC 214/2025, Anexo ${esc(a.anexo)}${a.item ? `, item ${esc(a.item)}` : ""}: ${esc(a.texto)}</p>`).join("")}
         ${red || extras ? `<div class="tags">${red}${extras}</div>` : ""}
@@ -34,13 +37,14 @@
   const forca = (c) => Math.max(...Object.values(c.reducao || {}).map(Number).filter((n) => !isNaN(n)), 0);
   const melhorClasse = (classes) => [...classes].sort((a, b) => forca(b) - forca(a))[0];
 
-  function veredito(classes, is) {
-    if (!classes.length) return `<p class="veredito">Sem benefício previsto nos anexos da LC 214/2025: vale a <b>tributação integral</b>${is.incide ? " e incide Imposto Seletivo" : ""}.</p>`;
+  function veredito(classes, is, data) {
+    const quando = periodo(data);
+    if (!classes.length) return `<p class="veredito">${quando}, sem benefício previsto nos anexos da LC 214/2025: vale a <b>tributação integral</b>${is.incide ? " e incide Imposto Seletivo" : ""}.</p>`;
     const melhor = melhorClasse(classes);
     const a = (melhor.anexos || [])[0];
     const como = melhor.tratamento && !/^padr/i.test(melhor.tratamento) ? melhor.tratamento.toLowerCase()
       : forca(melhor) ? `redução de ${pct(forca(melhor))}` : "tratamento específico";
-    return `<p class="veredito">Pode ter <b>${esc(como)}</b>
+    return `<p class="veredito">${quando}, pode ter <b>${esc(como)}</b>
       <span class="veredito-ref">${esc(melhor.cClassTrib)}${a ? ` · LC 214, Anexo ${esc(a.anexo)}${a.item ? `, item ${esc(a.item)}` : ""}` : ""}${classes.length > 1 ? ` · mais ${plural(classes.length - 1, "hipótese", "hipóteses")} abaixo` : ""}</span></p>`;
   }
 
@@ -64,9 +68,8 @@
         <div id="c-exemplos" class="exemplos"><span class="eyebrow">Experimente</span>${EXEMPLOS.map((e) => `<a href="#/busca/${encodeURIComponent(e)}">${esc(e)}</a>`).join("")}</div>
         <div id="c-res" aria-live="polite"></div>
         <div id="c-ficha" aria-live="polite"></div>`;
-      const salva = ler("rtc-data");
-      if (salva && datas().some(([v]) => v === salva)) $("#c-data", el).value = salva;
-      $("#c-data", el).addEventListener("change", () => { guardar("rtc-data", $("#c-data", el).value); RTC.rotear(); });
+      // A data não é guardada entre visitas: quem volta ao site sempre começa por hoje.
+      $("#c-data", el).addEventListener("change", () => RTC.rotear());
       $("#c-form", el).addEventListener("submit", (ev) => {
         ev.preventDefault();
         const q = $("#c-q", el).value.trim();
@@ -78,6 +81,9 @@
     },
     entrar([rota, arg], el) {
       $("#c-exemplos", el).hidden = !!arg;
+      // Com resultado na tela, o cabeçalho grande sai e a resposta sobe.
+      el.classList.toggle("compacta", !!arg);
+      el.classList.toggle("em-ficha", !!arg && (rota === "ncm" || rota === "nbs"));
       if (rota === "busca" && arg) return buscar(el, arg);
       if ((rota === "ncm" || rota === "nbs") && arg) return ficha(el, rota, arg);
       document.title = "Consulta RTC";
@@ -96,9 +102,10 @@
     try {
       const tipo = $("input[name=c-tipo]:checked", el).value;
       const r = await api(`/api/busca?q=${encodeURIComponent(q)}&tipo=${tipo}&data=${dataRef(el)}`);
-      RTC.ultimaBusca = q;
       const VISIVEIS = 10;
-      const grupo = (titulo, itens, rota) => !itens ? "" : `
+      // Grupo vazio só aparece quando o outro também está vazio (ou quando é o único pedido).
+      const algum = (r.ncm || []).length + (r.nbs || []).length > 0;
+      const grupo = (titulo, itens, rota) => !itens || (!itens.length && algum) ? "" : `
         <section class="grupo-res"><p class="eyebrow"><span>${titulo}</span><span>${itens.length}${itens.length >= 40 ? "+" : ""} ${itens.length === 1 ? "resultado" : "resultados"}</span></p>
         ${itens.length ? `<ul class="lista">${itens.map((i, n) => `
           <li${n >= VISIVEIS ? " hidden" : ""}><a href="#/${rota}/${i.codigo}"><span class="cod">${esc(i.codigoFormatado)}</span>
@@ -107,7 +114,8 @@
         </ul>
         ${itens.length > VISIVEIS ? `<button type="button" class="btn btn-fantasma btn-p mais">Mostrar mais ${itens.length - VISIVEIS}</button>` : ""}`
         : `<p class="vazio">Nenhum resultado com esse termo.</p>`}</section>`;
-      res.innerHTML = grupo("Produtos · NCM", r.ncm, "ncm") + grupo("Serviços · NBS", r.nbs, "nbs");
+      res.innerHTML = algum || tipo !== "todos" ? grupo("Produtos · NCM", r.ncm, "ncm") + grupo("Serviços · NBS", r.nbs, "nbs")
+        : `<p class="vazio">Nenhum produto ou serviço com “${esc(q)}”. Tente uma palavra só (ex.: “arroz”) ou o código NCM/NBS.</p>`;
       $$(".mais", res).forEach((b) => b.addEventListener("click", () => {
         $$("li[hidden]", b.closest(".grupo-res")).forEach((li) => { li.hidden = false; });
         b.remove();
@@ -119,9 +127,11 @@
 
   async function ficha(el, tipo, codigo) {
     $("#c-res", el).innerHTML = "";
+    $("#c-q", el).value = "";
     const alvo = $("#c-ficha", el);
     alvo.innerHTML = `<p class="carregando">Consultando a calculadora oficial</p>`;
     const data = dataRef(el);
+    const vez = (alvo.dataset.vez = String(Number(alvo.dataset.vez || 0) + 1));
     try {
       const r = await api(`/api/${tipo === "ncm" ? "produto" : "servico"}/${encodeURIComponent(codigo)}?data=${data}`);
       document.title = `${r.codigoFormatado} · Consulta RTC`;
@@ -129,8 +139,11 @@
       const classes = r.classificacoes || [];
       const outras = r.outrasPermitidas || [];
       const nome = tipo === "ncm" ? "produto" : "serviço";
-      const voltar = RTC.ultimaBusca
-        ? `<a href="#/busca/${encodeURIComponent(RTC.ultimaBusca)}">← Resultados para “${esc(RTC.ultimaBusca)}”</a>`
+      // "Voltar aos resultados" só quando a pessoa chegou aqui por uma busca.
+      const veio = /^#\/busca\/(.+)$/.exec(RTC.hashAnterior || "");
+      const qAnterior = veio ? decodeURIComponent(veio[1]) : "";
+      const voltar = qAnterior
+        ? `<a href="#/busca/${encodeURIComponent(qAnterior)}">← Resultados para “${esc(qAnterior)}”</a>`
         : `<a href="#/consulta">← Nova consulta</a>`;
       const sim = { tipo, codigo: r.codigo };
       alvo.innerHTML = `
@@ -139,13 +152,14 @@
           <p class="eyebrow">${tipo.toUpperCase()} <b>${esc(r.codigoFormatado)}</b></p>
           ${(r.caminho || []).length ? `<p class="ficha-trilha">${esc(r.caminho.join(" › "))} ›</p>` : ""}
           <h2 class="titulo">${esc(r.descricao || "Sem descrição na tabela oficial")}</h2>
-          ${veredito(classes, is)}
+          ${veredito(classes, is, r.data || data)}
           <div class="tags">
             ${is.incide ? `<span class="tag alerta"><i></i>Incide Imposto Seletivo${is.aliquotaAdValorem != null ? ` · ${pct(is.aliquotaAdValorem)}` : ""}</span>`
                         : `<span class="tag ok"><i></i>Sem Imposto Seletivo</span>`}
             ${r.unidade ? `<span class="tag">Unidade ${esc(r.unidade)}</span>` : ""}
             <span class="tag">Referência ${dataBR(r.data)}</span>
           </div>
+          <div id="c-futuro"></div>
           <div class="acoes esq">
             ${classes.length
               ? `<a class="btn btn-primario" href="#/simulador/${tipo}/${esc(r.codigo)}/${esc(melhorClasse(classes).cClassTrib)}">Simular com o benefício</a>
@@ -168,9 +182,29 @@
         </section>
         ${tipo === "nbs" ? `<section class="card" id="c-nfse"><h2 class="secao">Na NFS-e</h2><p class="carregando">Consultando as regras da NFS-e</p></section>` : ""}`;
       if (tipo === "nbs") nfse($("#c-nfse", el), r.codigo, data);
+      if (data < INICIO_2027) mudancaEm2027(el, alvo, vez, tipo, r);
     } catch (e) {
       alvo.innerHTML = `<p style="margin-top:var(--space-6)"><a href="#/consulta">← Consulta</a></p><p class="erro">${esc(e.message)}</p>`;
     }
+  }
+
+  // Consultando hoje: confere a ficha a partir de 2027 e avisa se a resposta muda (IS, classificações).
+  async function mudancaEm2027(el, alvo, vez, tipo, hojeR) {
+    let f;
+    try { f = await api(`/api/${tipo === "ncm" ? "produto" : "servico"}/${encodeURIComponent(hojeR.codigo)}?data=${INICIO_2027}`); }
+    catch (e) { return; }
+    const caixa = $("#c-futuro", alvo);
+    if (alvo.dataset.vez !== vez || !caixa) return; // a pessoa já abriu outra ficha
+    const mudancas = [];
+    const isHoje = !!hojeR.impostoSeletivo?.incide, isDepois = !!f.impostoSeletivo?.incide;
+    if (isDepois && !isHoje) mudancas.push(`passa a incidir Imposto Seletivo${f.impostoSeletivo.aliquotaAdValorem != null ? ` (${pct(f.impostoSeletivo.aliquotaAdValorem)})` : ""}`);
+    if (isHoje && !isDepois) mudancas.push("deixa de incidir Imposto Seletivo");
+    const cods = (x) => (x.classificacoes || []).map((c) => c.cClassTrib).sort().join();
+    if (cods(hojeR) !== cods(f)) mudancas.push(`as classificações com benefício mudam (${(hojeR.classificacoes || []).length} hoje, ${(f.classificacoes || []).length} em 2027)`);
+    if (!mudancas.length) return;
+    caixa.innerHTML = `<p class="aviso aviso-item">A partir de 01.01.2027 ${esc(mudancas.join("; "))}.
+      <button type="button" class="btn btn-fantasma btn-p">Ver a partir de 2027</button></p>`;
+    $("button", caixa).addEventListener("click", () => { $("#c-data", el).value = INICIO_2027; RTC.rotear(); });
   }
 
   async function nfse(el, nbs, data) {

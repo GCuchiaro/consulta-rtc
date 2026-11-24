@@ -9,6 +9,8 @@
 
   let anterior = null;
   RTC.rotear = function () {
+    // Endereço de onde a pessoa veio (o "voltar" da ficha só aponta para uma busca real).
+    if (location.hash !== RTC.hashAtual) { RTC.hashAnterior = RTC.hashAtual || ""; RTC.hashAtual = location.hash; }
     const partes = location.hash.replace(/^#\/?/, "").split("/");
     const lp = partes[0] === "" || !(partes[0] in MAPA);
     document.body.classList.toggle("modo-lp", lp);

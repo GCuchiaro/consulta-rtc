@@ -1,7 +1,8 @@
 "use strict";
 // Simulador do regime regular (CBS, IBS e IS) + campo de busca de produto reutilizado pelo Simples.
 (() => {
-  const { $, $$, esc, reais, pct, hoje, api, postJSON, baixar, cabeca, subNav, guardar, ler, jsonBruto } = RTC;
+  const { $, $$, esc, reais, pct, hoje, api, postJSON, baixar, cabeca, subNav, jsonBruto, guardar, ler,
+    falha, mostrarErro, limparErros, vigiarResultado, resultadoPronto } = RTC;
 
   RTC.seqSugestoes = 0;
   RTC.abasSimuladores = (ativo) => subNav([["#/simulador", "Regime regular", "rr"], ["#/simples", "Simples Nacional", "sn"]], ativo);
@@ -67,7 +68,7 @@
     return { html, ficha: r };
   };
 
-  const est = { seq: 0, ultimo: null };
+  const est = { seq: 0, ultimo: null, link: null, marcar: () => {} };
   const desde2027 = (el) => ($("#s-data", el).value || "") >= "2027-01-01";
 
   RTC.registrar("simulador", {
@@ -78,6 +79,7 @@
           "Simule CBS, IBS e Imposto Seletivo de uma <em>operação</em>",
           "Monte a operação e veja os tributos calculados pela calculadora oficial, item a item, com a memória de cálculo. O resultado gera o XML dos grupos de tributação da nota.")}
         ${RTC.abasSimuladores("rr")}
+        <div class="aviso aviso-item" id="s-link" role="status" hidden></div>
         <form id="s-form" class="card" autocomplete="off" novalidate>
           <fieldset><legend>Operação</legend>
             <div class="grade">
@@ -99,31 +101,54 @@
           <div class="card-titulo"><p class="eyebrow" style="margin:0">Itens</p></div>
           <div id="s-itens"></div>
           <div class="acoes">
+            <button type="button" class="btn btn-fantasma" id="s-limpar">Nova simulação</button>
             <button type="button" class="btn btn-secundario" id="s-add">Adicionar item</button>
             <button type="submit" class="btn btn-primario">Calcular tributos</button>
           </div>
         </form>
         <div id="s-res" aria-live="polite"></div>`;
-      $("#s-data", el).value = ler("rtc-sim-data") || hoje();
+      // A data não é guardada entre visitas: o simulador sempre abre em hoje.
+      $("#s-data", el).value = hoje();
       $("#s-data", el).addEventListener("change", () => {
-        guardar("rtc-sim-data", $("#s-data", el).value);
         atualizarAliq(el);
         $$(".item", el).forEach((it) => carregarClasses(el, it));
       });
       atualizarAliq(el);
       RTC.preencherUfMunicipio($("#s-uf", el), $("#s-mun", el), "rtc-sim");
-      $("#s-add", el).addEventListener("click", () => adicionarItem(el));
+      est.marcar = vigiarResultado($("#s-form", el), $("#s-res", el));
+      $("#s-add", el).addEventListener("click", () => { adicionarItem(el); est.marcar(); });
+      $("#s-limpar", el).addEventListener("click", () => {
+        novaSimulacao(el);
+        est.link = null;
+        if (location.hash !== "#/simulador") history.replaceState(null, "", "#/simulador");
+      });
       $("#s-form", el).addEventListener("submit", (ev) => { ev.preventDefault(); calcular(el); });
       adicionarItem(el);
     },
+    // Link vindo da ficha (#/simulador/ncm/<código>/<cClassTrib>): o endereço fica na barra, para voltar e compartilhar.
     entrar([, tipo, codigo, cClassTrib], el) {
       document.title = "Simulador · Consulta RTC";
-      if ((tipo === "ncm" || tipo === "nbs") && codigo) {
-        const vazio = $$(".item", el).find((it) => !it.dataset.codigo);
-        if (vazio) vazio.remove();
-        adicionarItem(el, { tipo, codigo, cClassTrib });
-        history.replaceState(null, "", "#/simulador");
-      }
+      const caixa = $("#s-link", el);
+      if (!((tipo === "ncm" || tipo === "nbs") && codigo)) { est.link = null; caixa.hidden = true; return; }
+      if (est.link === location.hash) return; // voltou ao mesmo link: mantém o que já está montado
+      est.link = location.hash;
+      const pre = { tipo, codigo, cClassTrib, valor: "1000" };
+      const montados = $$(".item", el).filter((it) => it.dataset.codigo);
+      if (!montados.length) { novaSimulacao(el, pre); return; }
+      // Já há uma simulação montada: a pessoa escolhe entre começar outra ou somar o item.
+      caixa.innerHTML = `<span>Você abriu ${tipo.toUpperCase()} <b class="mono">${esc(codigo)}</b>${cClassTrib ? ` com a classificação <b class="mono">${esc(cClassTrib)}</b>` : ""}.
+        A simulação atual tem ${montados.length === 1 ? "1 item" : `${montados.length} itens`}.</span>
+        <button type="button" class="btn btn-fantasma btn-p" data-acao="nova">Começar nova simulação</button>
+        <button type="button" class="btn btn-fantasma btn-p" data-acao="somar">Adicionar como item</button>`;
+      caixa.hidden = false;
+      caixa.scrollIntoView({ behavior: "smooth", block: "center" });
+      $$("button", caixa).forEach((b) => b.addEventListener("click", () => {
+        caixa.hidden = true;
+        if (b.dataset.acao === "nova") { novaSimulacao(el, pre); return; }
+        $$(".item", el).filter((it) => !it.dataset.codigo).forEach((it) => it.remove());
+        adicionarItem(el, pre);
+        est.marcar();
+      }));
     },
   });
 
@@ -149,13 +174,24 @@
     selMun.addEventListener("change", () => guardar(`${chave}-mun`, selMun.value));
   };
 
+  // Formulário com um item só (o do link, se houver) e sem resultado na tela.
+  function novaSimulacao(el, pre) {
+    $("#s-link", el).hidden = true;
+    $("#s-itens", el).innerHTML = "";
+    adicionarItem(el, pre);
+    const res = $("#s-res", el);
+    res.innerHTML = ""; resultadoPronto(res, false);
+    limparErros($("#s-form", el));
+  }
+
   function atualizarAliq(el) {
     $("#s-aliq", el).hidden = !desde2027(el);
     $("#s-2026", el).hidden = desde2027(el);
     $$(".item", el).forEach((it) => { $(".campo-is", it).hidden = !(it.dataset.is && desde2027(el)); });
   }
 
-  function adicionarItem(el, pre = {}) {
+  function adicionarItem(el, pre) {
+    pre = pre || {};
     const it = document.createElement("div");
     it.className = "item";
     it.innerHTML = `
@@ -172,12 +208,13 @@
       <p class="aviso aviso-item" hidden></p>`;
     $("#s-itens", el).appendChild(it);
     renumerar(el);
-    $(".remover", it).addEventListener("click", () => { it.remove(); renumerar(el); });
+    $(".remover", it).addEventListener("click", () => { it.remove(); renumerar(el); est.marcar(); });
     RTC.ligarBuscaProduto(it, { data: () => $("#s-data", el).value || hoje(), aoEscolher: () => carregarClasses(el, it) });
     $(".cclass", it).addEventListener("change", () => avisoBeneficio(it));
     if (pre.tipo && pre.codigo) {
       Object.assign(it.dataset, { tipo: pre.tipo, codigo: pre.codigo, cclassPre: pre.cClassTrib || "" });
       $(".cod-busca", it).value = pre.codigo;
+      if (pre.valor) $(".valor", it).value = pre.valor;
       carregarClasses(el, it);
     }
   }
@@ -224,17 +261,18 @@
 
   function lerForm(el) {
     const itens = $$(".item", el).map((it, i) => {
-      if (!it.dataset.codigo) throw new Error(`Item ${i + 1}: escolha o produto ou serviço na lista de sugestões.`);
+      if (!it.dataset.codigo) throw falha(`Item ${i + 1}: escolha o produto ou serviço na lista de sugestões.`, $(".cod-busca", it));
       const valor = parseFloat($(".valor", it).value);
-      if (!(valor >= 0)) throw new Error(`Item ${i + 1}: informe o valor.`);
+      if (!(valor >= 0)) throw falha(`Item ${i + 1}: informe o valor.`, $(".valor", it));
       const item = { tipo: it.dataset.tipo, codigo: it.dataset.codigo, cClassTrib: $(".cclass", it).value, valor };
       const qtd = parseFloat($(".qtd", it).value); if (qtd > 0) item.quantidade = qtd;
       const is = parseFloat($(".aliq-is", it).value); if (!$(".campo-is", it).hidden && is >= 0) item.aliquotaIS = is;
       return item;
     });
     const d = { data: $("#s-data", el).value, uf: $("#s-uf", el).value, municipio: Number($("#s-mun", el).value), itens };
-    if (!d.data) throw new Error("Informe a data do fato gerador.");
-    if (!d.uf || !d.municipio) throw new Error("Escolha a UF e o município.");
+    if (!d.data) throw falha("Informe a data do fato gerador.", $("#s-data", el));
+    if (!d.uf) throw falha("Escolha a UF.", $("#s-uf", el));
+    if (!d.municipio) throw falha("Escolha o município.", $("#s-mun", el));
     if (desde2027(el)) d.aliquotas = { cbs: +$("#s-cbs", el).value || 0, ibsEstadual: +$("#s-ibsuf", el).value || 0, ibsMunicipal: +$("#s-ibsmun", el).value || 0 };
     return d;
   }
@@ -242,12 +280,16 @@
   async function calcular(el) {
     const alvo = $("#s-res", el);
     let dados;
-    try { dados = lerForm(el); } catch (e) { alvo.innerHTML = `<p class="caixa-erro"><b>${esc(e.message)}</b></p>`; return; }
+    const form = $("#s-form", el);
+    try { dados = lerForm(el); } catch (e) { mostrarErro(form, alvo, e); return; }
+    limparErros(form);
+    resultadoPronto(alvo, false);
     alvo.innerHTML = `<p class="carregando">Calculando na calculadora oficial</p>`;
     try {
       const r = await postJSON("/api/simular", dados);
       est.ultimo = dados;
       alvo.innerHTML = resultado(el, r);
+      resultadoPronto(alvo, true);
       ligarXml(el);
       alvo.scrollIntoView({ behavior: "smooth", block: "start" });
       $("#s-resumo", el)?.focus({ preventScroll: true });
