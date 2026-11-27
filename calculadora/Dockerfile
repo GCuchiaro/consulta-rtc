@@ -2,8 +2,8 @@
 # Baixa o código na versão fixada abaixo, confere o commit, gera o banco SQLite
 # (Flyway) e empacota o JAR. VERSAO é só o rótulo (git describe); vale o COMMIT. O robô de atualização troca os dois.
 FROM maven:3.9-eclipse-temurin-25 AS build
-ARG VERSAO=1.7.2-1-gdef9705
-ARG COMMIT=def97056b799da8dd1306f4c9e47c669f4d44b4e
+ARG VERSAO=1.7.3-1-g0d4b073
+ARG COMMIT=0d4b073da96db8d015e50736d1552bbc7623224e
 RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 RUN git clone --filter=blob:none https://github.com/ReceitaFederal/calculadora-rtc-regime-regular.git . \
